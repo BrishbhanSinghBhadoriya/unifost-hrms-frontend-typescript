@@ -46,8 +46,8 @@ export default function EmployeesPage() {
       setLoading(true);
       const params = new URLSearchParams();
       if (employeeFilters.search) params.append('search', employeeFilters.search);
-      if (employeeFilters.department) params.append('department', employeeFilters.department);
-      if (employeeFilters.status) params.append('status', employeeFilters.status);
+      if (employeeFilters.department && employeeFilters.department !== 'all') params.append('department', employeeFilters.department);
+      if (employeeFilters.status && employeeFilters.status !== 'all') params.append('status', employeeFilters.status);
 
       const response = await api.get(`/employees?${params.toString()}`);
       setEmployees(response.data);
@@ -132,7 +132,7 @@ export default function EmployeesPage() {
           <SelectValue placeholder="Department" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Departments</SelectItem>
+          <SelectItem value="all">All Departments</SelectItem>
           {mockDepartments.map((dept) => (
             <SelectItem key={dept.id} value={dept.name}>
               {dept.name}
@@ -149,7 +149,7 @@ export default function EmployeesPage() {
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Status</SelectItem>
+          <SelectItem value="all">All Status</SelectItem>
           <SelectItem value="active">Active</SelectItem>
           <SelectItem value="inactive">Inactive</SelectItem>
           <SelectItem value="terminated">Terminated</SelectItem>

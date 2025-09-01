@@ -51,12 +51,12 @@ export default function LeavesPage() {
       // For employees, only show their own leaves
       if (userRole === 'employee') {
         params.append('employee', currentEmployeeId);
-      } else if (leaveFilters.employee) {
+      } else if (leaveFilters.employee && leaveFilters.employee !== 'all') {
         params.append('employee', leaveFilters.employee);
       }
       
-      if (leaveFilters.status) params.append('status', leaveFilters.status);
-      if (leaveFilters.type) params.append('type', leaveFilters.type);
+      if (leaveFilters.status && leaveFilters.status !== 'all') params.append('status', leaveFilters.status);
+      if (leaveFilters.type && leaveFilters.type !== 'all') params.append('type', leaveFilters.type);
 
       const response = await api.get(`/leaves?${params.toString()}`);
       setLeaves(response.data);
@@ -141,7 +141,7 @@ export default function LeavesPage() {
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Status</SelectItem>
+          <SelectItem value="all">All Status</SelectItem>
           <SelectItem value="pending">Pending</SelectItem>
           <SelectItem value="approved">Approved</SelectItem>
           <SelectItem value="rejected">Rejected</SelectItem>
@@ -156,7 +156,7 @@ export default function LeavesPage() {
           <SelectValue placeholder="Leave Type" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Types</SelectItem>
+          <SelectItem value="all">All Types</SelectItem>
           <SelectItem value="casual">Casual</SelectItem>
           <SelectItem value="sick">Sick</SelectItem>
           <SelectItem value="earned">Earned</SelectItem>
@@ -175,7 +175,7 @@ export default function LeavesPage() {
             <SelectValue placeholder="Employee" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Employees</SelectItem>
+            <SelectItem value="all">All Employees</SelectItem>
             {mockEmployees.map((emp) => (
               <SelectItem key={emp.id} value={emp.id}>
                 {emp.name}

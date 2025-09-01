@@ -172,14 +172,14 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
         <div className="space-y-2">
           <Label htmlFor="managerId">Manager</Label>
           <Select
-            value={watch('managerId')}
-            onValueChange={(value) => setValue('managerId', value)}
+            value={watch('managerId') || 'none'}
+            onValueChange={(value) => setValue('managerId', value === 'none' ? '' : value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select manager" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No Manager</SelectItem>
+              <SelectItem value="none">No Manager</SelectItem>
               {potentialManagers.map((manager) => (
                 <SelectItem key={manager.id} value={manager.id}>
                   {manager.name} ({manager.empCode})

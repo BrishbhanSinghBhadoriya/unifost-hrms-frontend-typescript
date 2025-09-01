@@ -22,7 +22,7 @@ export default function HolidaysPage() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
-  const [selectedRegion, setSelectedRegion] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('all');
 
   useEffect(() => {
     fetchHolidays();
@@ -33,7 +33,7 @@ export default function HolidaysPage() {
       setLoading(true);
       const params = new URLSearchParams();
       if (selectedYear) params.append('year', selectedYear);
-      if (selectedRegion) params.append('region', selectedRegion);
+      if (selectedRegion && selectedRegion !== 'all') params.append('region', selectedRegion);
 
       const response = await api.get(`/holidays?${params.toString()}`);
       setHolidays(response.data);
@@ -101,7 +101,7 @@ export default function HolidaysPage() {
               <SelectValue placeholder="All Regions" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Regions</SelectItem>
+              <SelectItem value="all">All Regions</SelectItem>
               <SelectItem value="National">National</SelectItem>
               <SelectItem value="West">West</SelectItem>
               <SelectItem value="East">East</SelectItem>

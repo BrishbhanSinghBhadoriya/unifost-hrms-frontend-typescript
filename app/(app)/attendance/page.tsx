@@ -42,12 +42,12 @@ export default function AttendancePage() {
       // For employees, only show their own attendance
       if (userRole === 'employee') {
         params.append('employee', currentEmployeeId);
-      } else if (attendanceFilters.employee) {
+      } else if (attendanceFilters.employee && attendanceFilters.employee !== 'all') {
         params.append('employee', attendanceFilters.employee);
       }
       
       if (attendanceFilters.month) params.append('month', attendanceFilters.month);
-      if (attendanceFilters.status) params.append('status', attendanceFilters.status);
+      if (attendanceFilters.status && attendanceFilters.status !== 'all') params.append('status', attendanceFilters.status);
 
       const response = await api.get(`/attendance?${params.toString()}`);
       setAttendance(response.data);
@@ -160,7 +160,7 @@ export default function AttendancePage() {
             <SelectValue placeholder="Employee" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Employees</SelectItem>
+            <SelectItem value="all">All Employees</SelectItem>
             {mockEmployees.map((emp) => (
               <SelectItem key={emp.id} value={emp.id}>
                 {emp.name}
@@ -178,7 +178,7 @@ export default function AttendancePage() {
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All Status</SelectItem>
+          <SelectItem value="all">All Status</SelectItem>
           <SelectItem value="present">Present</SelectItem>
           <SelectItem value="absent">Absent</SelectItem>
           <SelectItem value="leave">Leave</SelectItem>
