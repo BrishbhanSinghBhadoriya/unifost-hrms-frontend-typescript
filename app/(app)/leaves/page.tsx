@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
@@ -24,48 +24,78 @@ import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import { LeaveRequest } from '@/lib/types';
 import { mockEmployees } from '@/lib/mock';
 import { useFiltersStore } from '@/store/filters';
-import { FileText, Plus, Check, X } from 'lucide-react';
+import { Plus, Check, X } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
+import Cookies from "js-cookie";
+
 
 export default function LeavesPage() {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const router = useRouter();
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
   const { leaveFilters, setLeaveFilters } = useFiltersStore();
-  const userRole = (session?.user as any)?.role || 'employee';
-  const currentEmployeeId = (session?.user as any)?.employeeId;
+  const userRole = user?.role || 'employee';
+  const currentEmployeeId = user?.id;
 
   useEffect(() => {
     fetchLeaves();
-  }, [leaveFilters]);
+  }, []);
 
   const fetchLeaves = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      
-      // For employees, only show their own leaves
+      let url = '';
       if (userRole === 'employee') {
-        params.append('employee', currentEmployeeId);
-      } else if (leaveFilters.employee && leaveFilters.employee !== 'all') {
-        params.append('employee', leaveFilters.employee);
+        url = '/leaves/me';
+      } else {
+        const params = new URLSearchParams();
+        if (leaveFilters.employee && leaveFilters.employee !== 'all') {
+          params.append('employee', leaveFilters.employee);
+        }
+        if (leaveFilters.status && leaveFilters.status !== 'all') params.append('status', leaveFilters.status);
+        if (leaveFilters.type && leaveFilters.type !== 'all') params.append('type', leaveFilters.type);
+        url = `/api/leaves?${params.toString()}`;
       }
-      
-      if (leaveFilters.status && leaveFilters.status !== 'all') params.append('status', leaveFilters.status);
-      if (leaveFilters.type && leaveFilters.type !== 'all') params.append('type', leaveFilters.type);
+      const token= Cookies.get('token');
+      const response = await api.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+     
 
-      const response = await api.get(`/leaves?${params.toString()}`);
-      setLeaves(response.data);
+
+      const body: any = response.data;
+      const raw = Array.isArray(body)
+        ? body
+        : Array.isArray(body?.data)
+          ? body.data
+          : Array.isArray(body?.leaves)
+            ? body.leaves
+            : [];
+      const rows = raw.map((l: any) => ({
+        id: l._id || l.id,
+        employeeName: user?.name || '',
+        type: l.leaveType || l.type,
+        startDate: l.startDate,
+        endDate: l.endDate,
+        days: l.totalDays || l.days,
+        appliedOn: l.createdAt || l.appliedOn,
+        status: l.status,
+        reason: l.reason,
+      }));
+      setLeaves(rows as any);
     } catch (error) {
       toast.error('Failed to fetch leave requests');
     } finally {
       setLoading(false);
     }
   };
+  
 
   const handleApproveReject = async (leaveId: string, action: 'approve' | 'reject') => {
     try {

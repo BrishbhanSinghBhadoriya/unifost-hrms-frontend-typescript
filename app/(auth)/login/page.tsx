@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,31 +8,33 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth-context';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🚀 Form submitted with:', { username, password });
     setIsLoading(true);
 
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
+      console.log('🔐 Calling login function...');
+      const success = await login(username, password);
+      console.log('🔐 Login result:', success);
 
-      if (result?.error) {
-        toast.error('Invalid email or password');
-      } else {
+      if (success) {
         toast.success('Welcome back!');
         router.push('/dashboard');
+      } else {
+        toast.error('Invalid username or password');
       }
     } catch (error) {
+      console.error('💥 Login error:', error);
       toast.error('An error occurred during login');
     } finally {
       setIsLoading(false);
@@ -55,13 +56,13 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username/Email</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="Enter your username or email"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
@@ -81,17 +82,6 @@ export default function LoginPage() {
               Sign In
             </Button>
           </form>
-          
-          <div className="mt-6 pt-6 border-t">
-            <h4 className="text-sm font-medium mb-3">Demo Accounts:</h4>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <div>Employee: john.doe@company.com</div>
-              <div>Manager: sarah.manager@company.com</div>
-              <div>HR: mike.hr@company.com</div>
-              <div>Admin: admin@company.com</div>
-              <div className="font-medium mt-2">Password: password</div>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

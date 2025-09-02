@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -23,12 +23,12 @@ import { toast } from 'sonner';
 import dayjs from 'dayjs';
 
 export default function AttendancePage() {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const { attendanceFilters, setAttendanceFilters } = useFiltersStore();
-  const userRole = (session?.user as any)?.role || 'employee';
-  const currentEmployeeId = (session?.user as any)?.employeeId;
+  const userRole = user?.role || 'employee';
+  const currentEmployeeId = user?.id;
 
   useEffect(() => {
     fetchAttendance();
@@ -41,7 +41,9 @@ export default function AttendancePage() {
       
       // For employees, only show their own attendance
       if (userRole === 'employee') {
-        params.append('employee', currentEmployeeId);
+        if (currentEmployeeId) {
+          params.append('employee', currentEmployeeId);
+        }
       } else if (attendanceFilters.employee && attendanceFilters.employee !== 'all') {
         params.append('employee', attendanceFilters.employee);
       }
@@ -90,7 +92,7 @@ export default function AttendancePage() {
       key: 'employeeName' as keyof AttendanceRecord,
       label: 'Employee',
       sortable: true,
-      render: (_, record: AttendanceRecord) => (
+      render: (_: any, record: AttendanceRecord) => (
         <div>
           <div className="font-medium">{record.employeeName}</div>
           <div className="text-sm text-muted-foreground">
@@ -134,7 +136,7 @@ export default function AttendancePage() {
     <div className="flex gap-2">
       <Select
         value={attendanceFilters.month}
-        onValueChange={(value) => setAttendanceFilters({ month: value })}
+        onValueChange={(value: string) => setAttendanceFilters({ month: value })}
       >
         <SelectTrigger className="w-40">
           <SelectValue placeholder="Month" />
@@ -154,7 +156,7 @@ export default function AttendancePage() {
       {userRole !== 'employee' && (
         <Select
           value={attendanceFilters.employee}
-          onValueChange={(value) => setAttendanceFilters({ employee: value })}
+          onValueChange={(value: string) => setAttendanceFilters({ employee: value })}
         >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Employee" />
@@ -172,7 +174,7 @@ export default function AttendancePage() {
 
       <Select
         value={attendanceFilters.status}
-        onValueChange={(value) => setAttendanceFilters({ status: value })}
+        onValueChange={(value: string) => setAttendanceFilters({ status: value })}
       >
         <SelectTrigger className="w-32">
           <SelectValue placeholder="Status" />

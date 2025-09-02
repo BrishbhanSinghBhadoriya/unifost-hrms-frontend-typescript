@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import dayjs from 'dayjs';
 
 const leaveSchema = z.object({
@@ -37,7 +37,6 @@ interface LeaveFormProps {
 }
 
 export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
-  const { data: session } = useSession();
   const {
     register,
     handleSubmit,

@@ -1,34 +1,32 @@
 "use client";
 
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
+
 interface AuthGuardProps {
   children: React.ReactNode;
-  requiredRole?: string[];
+  requiredRole?: string;
 }
 
 export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
-  const { data: session, status } = useSession();
+  const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === 'loading') return;
-    
-    if (!session) {
+    if (!loading && !isAuthenticated) {
       router.push('/login');
-      return;
     }
+  }, [loading, isAuthenticated, router]);
 
-    const userRole = (session.user as any)?.role;
-    if (requiredRole && !requiredRole.includes(userRole)) {
+  useEffect(() => {
+    if (!loading && isAuthenticated && requiredRole && user?.role !== requiredRole) {
       router.push('/dashboard');
-      return;
     }
-  }, [session, status, router, requiredRole]);
+  }, [loading, isAuthenticated, requiredRole, user, router]);
 
-  if (status === 'loading') {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -36,12 +34,11 @@ export function AuthGuard({ children, requiredRole }: AuthGuardProps) {
     );
   }
 
-  if (!session) {
+  if (!isAuthenticated) {
     return null;
   }
 
-  const userRole = (session.user as any)?.role;
-  if (requiredRole && !requiredRole.includes(userRole)) {
+  if (requiredRole && user?.role !== requiredRole) {
     return null;
   }
 

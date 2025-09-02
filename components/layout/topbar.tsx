@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession, signOut } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
@@ -30,11 +30,15 @@ interface TopbarProps {
 }
 
 export function Topbar({ onToggleSidebar, title, breadcrumbs, actions }: TopbarProps) {
-  const { data: session } = useSession();
-  const user = session?.user as any;
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/login';
+  };
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-b bg-gradient-to-r from-background via-secondary to-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center px-6 gap-4">
         <Button
           variant="ghost"
@@ -54,7 +58,7 @@ export function Topbar({ onToggleSidebar, title, breadcrumbs, actions }: TopbarP
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search..."
-              className="pl-10 w-64"
+              className="pl-10 w-64 rounded-xl"
             />
           </div>
 
@@ -71,7 +75,6 @@ export function Topbar({ onToggleSidebar, title, breadcrumbs, actions }: TopbarP
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user?.avatarUrl} alt={user?.name} />
                   <AvatarFallback>
                     {user?.name?.split(' ').map((n: string) => n[0]).join('')}
                   </AvatarFallback>
@@ -99,7 +102,7 @@ export function Topbar({ onToggleSidebar, title, breadcrumbs, actions }: TopbarP
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={handleLogout}
                 className="text-red-600 focus:text-red-600"
               >
                 <LogOut className="mr-2 h-4 w-4" />

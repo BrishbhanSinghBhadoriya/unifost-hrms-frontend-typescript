@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -30,9 +30,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false }: SidebarProps) {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const pathname = usePathname();
-  const userRole = (session?.user as any)?.role || 'employee';
+  const userRole = user?.role || 'employee';
 
   const filteredNavigation = navigation.filter(item => 
     item.roles.includes(userRole)
@@ -40,17 +40,17 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
 
   return (
     <div className={cn(
-      'flex flex-col h-full bg-card border-r transition-all duration-300',
+      'flex flex-col h-full border-r transition-all duration-300 bg-gradient-to-b from-background to-secondary',
       collapsed ? 'w-16' : 'w-64'
     )}>
       <div className="p-6 border-b">
         <div className="flex items-center gap-3">
-          <div className="bg-primary text-primary-foreground rounded-lg p-2">
+          <div className="bg-gradient-to-br from-primary to-accent text-primary-foreground rounded-lg p-2 shadow-sm">
             <Building className="h-6 w-6" />
           </div>
           {!collapsed && (
             <div>
-              <h1 className="font-bold text-xl">HRMS</h1>
+              <h1 className="font-bold text-xl tracking-tight">HRMS</h1>
               <p className="text-xs text-muted-foreground">Human Resources</p>
             </div>
           )}
@@ -67,9 +67,9 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
               key={item.name}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors shadow-[0_1px_0_0_rgba(0,0,0,0.02)]',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted',
                 collapsed && 'justify-center'
               )}

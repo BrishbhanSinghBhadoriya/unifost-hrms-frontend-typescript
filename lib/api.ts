@@ -1,19 +1,27 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 const api = axios.create({
-  baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:3000/api' : '/api',
-  timeout: 10000,
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL
 });
 
-// Interceptors for auth token
+
 api.interceptors.request.use((config) => {
-  // Add auth token here if available
+  try {
+    if (typeof window !== 'undefined') {
+      const token = Cookies.get('token') || localStorage.getItem('token');
+      if (token) {
+        config.headers = config.headers || {};
+        (config.headers as any)['Authorization'] = `Bearer ${token}`;
+      }
+    }
+  } catch {}
   return config;
 });
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error:Error) => {
     console.error('API Error:', error);
     return Promise.reject(error);
   }

@@ -63,7 +63,16 @@ export function DataTable<T extends Record<string, any>>({
     onSearch?.(query);
   };
 
-  const sortedData = [...data].sort((a, b) => {
+  const rows = Array.isArray(data) ? data : [] as T[];
+  const filteredRows = searchQuery
+    ? rows.filter((row) => {
+        const q = searchQuery.toLowerCase();
+        return Object.values(row).some((v) =>
+          String(v ?? '').toLowerCase().includes(q)
+        );
+      })
+    : rows;
+  const sortedData = [...filteredRows].sort((a, b) => {
     if (!sortColumn) return 0;
     
     const aValue = a[sortColumn];

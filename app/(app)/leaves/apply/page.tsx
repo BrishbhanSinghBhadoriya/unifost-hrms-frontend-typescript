@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LeaveForm } from '@/components/forms/leave-form';
 import { getLeaveBalance, mockEmployees } from '@/lib/mock';
@@ -12,20 +12,21 @@ import { toast } from 'sonner';
 
 export default function ApplyLeavePage() {
   const router = useRouter();
-  const { data: session } = useSession();
-  const currentEmployeeId = (session?.user as any)?.employeeId;
-  const employee = mockEmployees.find(emp => emp.id === currentEmployeeId);
+  const { user } = useAuth();
+  const currentEmployeeId = user?.id;
   const leaveBalance = getLeaveBalance(currentEmployeeId);
 
   const handleSubmit = async (data: any) => {
     try {
-      const leaveData = {
-        ...data,
-        employeeId: currentEmployeeId,
-        employeeName: employee?.name,
+      // Backend expects: { leaveType, reason, startDate, endDate, durationType }
+      const payload = {
+        leaveType: data.type,
+        reason: data.reason,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        durationType: data.days && data.days > 1 ? 'multiple_days' : 'single_day',
       };
-
-      await api.post('/leaves', leaveData);
+      await api.post('/leaves', payload);
       toast.success('Leave request submitted successfully');
       router.push('/leaves');
     } catch (error) {
