@@ -204,9 +204,10 @@ export default function ProfilePage() {
       const res = await authService.updateEmployeeProfile(user!.id, payload);
       if (res.success) {
         const returned = res.data?.user || res.data;
+        console.log(returned);
         updateUser({
           name: returned?.name ?? payload.name,
-          dateOfBirth: returned?.dateOfBirth ?? returned?.dob ?? payload.dateOfBirth,
+          dateOfBirth:returned?.dob,
           address: returned?.address ?? payload.address,
           gender: returned?.gender ?? payload.gender,
           country: returned?.country ?? payload.country,

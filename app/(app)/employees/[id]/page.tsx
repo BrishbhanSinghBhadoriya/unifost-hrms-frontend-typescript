@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/table';
 import { ProfileSkeleton } from '@/components/ui/loading-skeleton';
 import { Employee, AttendanceRecord, LeaveRequest, LeaveBalance } from '@/lib/types';
-import { getEmployeeById, getAttendanceByEmployee, getLeaveRequestsByEmployee, getLeaveBalance } from '@/lib/mock';
+import { getAttendanceByEmployee, getLeaveRequestsByEmployee, getLeaveBalance } from '@/lib/mock';
 import {
   User,
   Mail,
@@ -31,32 +31,37 @@ import {
   Clock,
 } from 'lucide-react';
 import dayjs from 'dayjs';
+import api from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 
 export default function EmployeeProfilePage() {
   const params = useParams();
-  const [employee, setEmployee] = useState<Employee | null>(null);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [leaveBalance, setLeaveBalance] = useState<LeaveBalance | null>(null);
-  const [loading, setLoading] = useState(true);
+const id = params.id as string;
+  const getEmployeeById = async (id: string): Promise<Employee> => {
+    const response = await api.get(`/hr/getEmployee/${id}`);
+    return response.data;
+  };
 
-  useEffect(() => {
-    if (params.id) {
-      const emp = getEmployeeById(params.id as string);
-      setEmployee(emp || null);
-      
-      if (emp) {
-        const currentMonth = dayjs().format('YYYY-MM');
-        setAttendance(getAttendanceByEmployee(emp.id, currentMonth));
-        setLeaveRequests(getLeaveRequestsByEmployee(emp.id));
-        setLeaveBalance(getLeaveBalance(emp.id) || null);
-      }
-      
-      setLoading(false);
-    }
-  }, [params.id]);
+  const { data, isLoading } = useQuery({
+    queryKey: ['employee', params.id],
+    queryFn: () => getEmployeeById(params.id as string),
+  });
+  const employee = data?.employee[0] as Employee | undefined;
+  const currentMonth = useMemo(() => dayjs().format('YYYY-MM'), []);
+  const attendance = useMemo<AttendanceRecord[]>(
+    () => (employee ? getAttendanceByEmployee(employee.id, currentMonth) : []),
+    [employee, currentMonth]
+  );
+  const leaveRequests = useMemo<LeaveRequest[]>(
+    () => (employee ? getLeaveRequestsByEmployee(employee.id) : []),
+    [employee]
+  );
+  const leaveBalance = useMemo<LeaveBalance | null>(
+    () => (employee ? getLeaveBalance(employee.id) || null : null),
+    [employee]
+  );
 
-  if (loading) {
+  if (isLoading) {
     return <ProfileSkeleton />;
   }
 
@@ -69,56 +74,58 @@ export default function EmployeeProfilePage() {
     );
   }
 
-  const presentDays = attendance.filter(record => record.status === 'present').length;
+  const presentDays = attendance.filter((record) => record.status === 'present').length;
   const totalWorkingDays = attendance.length;
   const attendancePercentage = totalWorkingDays > 0 ? Math.round((presentDays / totalWorkingDays) * 100) : 0;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={employee.avatarUrl} />
-              <AvatarFallback className="text-2xl">
-                {employee.name.split(' ').map(n => n[0]).join('')}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1 space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <h1 className="text-2xl font-bold">{employee.name}</h1>
-                <Badge variant={
-                  employee.status === 'active' ? 'default' :
-                  employee.status === 'inactive' ? 'secondary' : 'destructive'
-                }>
-                  {employee.status}
-                </Badge>
-              </div>
-              <p className="text-lg text-muted-foreground">{employee.designation}</p>
-              <p className="text-muted-foreground">{employee.department} • {employee.empCode}</p>
-              
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mt-4">
-                <div className="flex items-center gap-1">
-                  <Mail className="h-4 w-4" />
-                  {employee.email}
+      <Card className="overflow-hidden border-0 shadow-sm">
+        <CardContent className="p-0">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-20" />
+            <div className="relative p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                <Avatar className="h-24 w-24 ring-4 ring-background">
+                  <AvatarImage src={employee.profilePicture} />
+                  <AvatarFallback className="text-xl font-semibold">
+                    {employee.name}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <h1 className="text-2xl font-bold tracking-tight">{employee.name}</h1>
+                    <Badge className="capitalize" variant={
+                      employee.status === 'active' ? 'default' :
+                      employee.status === 'inactive' ? 'secondary' : 'destructive'
+                    }>
+                      {employee.status}
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground">{employee.designation}</p>
+                  <p className="text-sm text-muted-foreground">{employee.department} • {employee.empCode}</p>
+
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-muted-foreground bg-background/60 backdrop-blur">
+                      <Mail className="h-3.5 w-3.5" /> {employee.email}
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-muted-foreground bg-background/60 backdrop-blur">
+                      <Phone className="h-3.5 w-3.5" /> {employee.phone}
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-muted-foreground bg-background/60 backdrop-blur">
+                      <Calendar className="h-3.5 w-3.5" /> Joined {dayjs(employee.joinedOn).format('MMM DD, YYYY')}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Phone className="h-4 w-4" />
-                  {employee.phone}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  Joined {dayjs(employee.joinedOn).format('MMM DD, YYYY')}
-                </div>
+
+                <Button className="shrink-0">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </Button>
               </div>
             </div>
-
-            <Button>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Profile
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -197,48 +204,24 @@ export default function EmployeeProfilePage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle>Personal Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Date of Birth</span>
-                  <span>{employee.dateOfBirth ? dayjs(employee.dateOfBirth).format('MMM DD, YYYY') : 'N/A'}</span>
+                  <span className="text-muted-foreground">Date of Birth :</span>
+                  <span>{employee.dob }</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Address</span>
+                  <span className="text-muted-foreground">Address:</span>
                   <span className="text-right max-w-48">{employee.address || 'N/A'}</span>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Emergency Contact</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {employee.emergencyContact ? (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Name</span>
-                      <span>{employee.emergencyContact.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Phone</span>
-                      <span>{employee.emergencyContact.phone}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Relationship</span>
-                      <span>{employee.emergencyContact.relationship}</span>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-muted-foreground">No emergency contact information</p>
-                )}
-              </CardContent>
-            </Card>
+            
           </div>
         </TabsContent>
 
@@ -251,7 +234,7 @@ export default function EmployeeProfilePage() {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Employee Code</span>
-                  <span className="font-medium">{employee.empCode}</span>
+                  <span className="font-medium">{employee.employeeId}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Department</span>
@@ -281,7 +264,7 @@ export default function EmployeeProfilePage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Salary</span>
-                  <span>$***,***</span>
+                  <span>{employee.salary}</span>
                 </div>
               </div>
             </CardContent>

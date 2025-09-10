@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,54 +13,136 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
-import { AttendanceRecord } from '@/lib/types';
-import { mockEmployees } from '@/lib/mock';
+import { AttendanceRecord, Employee } from '@/lib/types';
 import { useFiltersStore } from '@/store/filters';
-import { Clock, Calendar, Download } from 'lucide-react';
-import api from '@/lib/api';
+import { Download, Clock, Pencil, Trash2, Plus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { EditModal } from '@/components/ui/edit-modal';
+import { Input } from '@/components/ui/input';
+import api from '@/lib/api';
+import { fetchAllEmployees } from '@/components/functions/Employee';
+import { fetchEmployeesAttenedence } from '@/components/functions/getAttendence';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function AttendancePage() {
   const { user } = useAuth();
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  console.log('AttendancePage: user:', user);
   const { attendanceFilters, setAttendanceFilters } = useFiltersStore();
-  const userRole = user?.role || 'employee';
+  const userRole = user?.role ;
   const currentEmployeeId = user?.id;
+  const isHR = userRole === 'hr' || userRole === 'admin';
+  const qc = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState<Partial<AttendanceRecord> | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingRecord, setDeletingRecord] = useState<AttendanceRecord | null>(null);
+  const [dateFilter, setDateFilter] = useState('');
+  const [rangeStart, setRangeStart] = useState<string>('');
+  const [rangeEnd, setRangeEnd] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'view' | 'mark'>('view');
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkDate, setBulkDate] = useState<string>('');
+  const [bulkCheckIn, setBulkCheckIn] = useState<string>('');
+  const [bulkCheckOut, setBulkCheckOut] = useState<string>('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<'Present' | 'Absent'>('Present');
+  const [selectedBulk, setSelectedBulk] = useState<Set<string>>(new Set());
+  // employeesData is defined below via useQuery; compute these after it loads
+  const allEmployeeIds = (typeof window !== 'undefined' && Array.isArray((globalThis as any).tmp)) ? [] : [];
+  let allSelected = false;
 
-  useEffect(() => {
-    fetchAttendance();
-  }, [attendanceFilters]);
+  
+  const {data:employeesData} = useQuery({
+    queryKey: ['employees'],
+    queryFn: fetchAllEmployees,
+  });
+  const computedAllEmployeeIds = Array.from(new Set((employeesData || []).map((e: Employee) => String(e.id || (e as any)._id))));
+  const [selectAllBulk, setSelectAllBulk] = useState(false);
+  
+  const {data:AttendanceData ,isLoading}=useQuery({
+    queryKey:['attendance'],
+    queryFn:fetchEmployeesAttenedence
 
-  const fetchAttendance = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
+  })
+  
+  const saveMutation = useMutation({
+    mutationFn: async (record: Partial<AttendanceRecord>) => {
+      console.log('Save mutation called with:', record);
+      const recordId = record.id || (record as any)._id;
       
-      // For employees, only show their own attendance
-      if (userRole === 'employee') {
-        if (currentEmployeeId) {
-          params.append('employee', currentEmployeeId);
-        }
-      } else if (attendanceFilters.employee && attendanceFilters.employee !== 'all') {
-        params.append('employee', attendanceFilters.employee);
+      if (recordId) {
+        const payload = {
+          employeeName: record.employeeName,
+          status: record.status,
+          date: record.date,
+          checkIn: record.checkIn,
+          checkOut: record.checkOut
+        };
+        console.log('Update API payload:', payload);
+        const res = await api.put(`/hr/updateAttendance/${recordId}`, payload);
+        return res.data;
+      } else {
+        const toIso = (date?: string, hhmm?: string) => {
+          if (!date || !hhmm) return undefined as unknown as string;
+          return dayjs(`${date} ${hhmm}`).toISOString();
+        };
+        const payload = {
+          employeeName: record.employeeName,
+          date: record.date,
+          checkIn: record.checkIn?.includes('T') ? record.checkIn : toIso(record.date, record.checkIn),
+          checkOut: record.checkOut?.includes('T') ? record.checkOut : toIso(record.date, record.checkOut),
+          status: (record.status || 'present').toString().toLowerCase() === 'present' ? 'Present' : String(record.status ?? '')
+        };
+        console.log('Create API payload:', payload);
+        const response = await api.post(`http://localhost:5001/api/hr/markAttendance/${record.employeeId}`, payload);
+        return response.data;
       }
-      
-      if (attendanceFilters.month) params.append('month', attendanceFilters.month);
-      if (attendanceFilters.status && attendanceFilters.status !== 'all') params.append('status', attendanceFilters.status);
+    },
+    onSuccess: () => {
+      toast.success('Saved');
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+      setEditOpen(false);
+      setEditing(null);
+    },
+    onError: (error) => {
+      console.error('Save error:', error);
+      toast.error('Save failed');
+    },
+  });
 
-      const response = await api.get(`/attendance?${params.toString()}`);
-      setAttendance(response.data);
-    } catch (error) {
-      toast.error('Failed to fetch attendance records');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      console.log('Delete mutation called with ID:', id);
+      const res = await api.delete(`/hr/deleteAttendance/${id}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Deleted');
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+    },
+    onError: (error) => {
+      console.error('Delete error:', error);
+      toast.error('Delete failed');
+    },
+  });
 
   const exportToCsv = () => {
-    const csvData = attendance.map(record => ({
+    const csvData = ((AttendanceData ?? []) as AttendanceRecord[]).map((record: AttendanceRecord) => ({
       Employee: record.employeeName,
       Date: record.date,
       'Check In': record.checkIn || '',
@@ -73,7 +154,7 @@ export default function AttendancePage() {
     const headers = Object.keys(csvData[0] || {});
     const csvContent = [
       headers.join(','),
-      ...csvData.map(row => headers.map(header => (row as any)[header]).join(','))
+      ...csvData.map((row: any) => headers.map((header) => (row as any)[header]).join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -87,38 +168,181 @@ export default function AttendancePage() {
     toast.success('Attendance data exported successfully');
   };
 
+  const onCheckIn = (record: AttendanceRecord) => {
+    const now = dayjs().format('HH:mm');
+    saveMutation.mutate({ ...record, checkIn: now, status: 'present' });
+  };
+
+  const onCheckOut = (record: AttendanceRecord) => {
+    const now = dayjs().format('HH:mm');
+    let hoursWorked = record.hoursWorked;
+    if (record.checkIn) {
+      const start = dayjs(`${record.date} ${record.checkIn}`);
+      const end = dayjs(`${record.date} ${now}`);
+      const diff = end.diff(start, 'minute') / 60;
+      hoursWorked = Math.max(0, Math.round(diff * 10) / 10);
+    }
+    saveMutation.mutate({ ...record, checkOut: now, hoursWorked, status: 'present' });
+  };
+
+  const handleEdit = (record: AttendanceRecord) => {
+    // Format the times for the input fields
+    const formatTimeForInput = (time?: string) => {
+      if (!time) return '';
+      const iso = dayjs(time);
+      if (iso.isValid()) return iso.format('HH:mm');
+      const hm = dayjs(time, 'HH:mm', true);
+      if (hm.isValid()) return hm.format('HH:mm');
+      return time;
+    };
+
+    setEditing({
+      ...record,
+      checkIn: formatTimeForInput(record.checkIn),
+      checkOut: formatTimeForInput(record.checkOut),
+    });
+    setEditOpen(true);
+  };
+
+  const handleDeleteClick = (record: AttendanceRecord) => {
+    setDeletingRecord(record);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingRecord) {
+      deleteMutation.mutate(deletingRecord.id || (deletingRecord as any)._id);
+      setDeleteOpen(false);
+      setDeletingRecord(null);
+    }
+  };
+
+  const formatTime = (time?: string) => {
+    if (!time) return '-';
+    const iso = dayjs(time);
+    if (iso.isValid()) return iso.format('hh:mm A');
+    const hm = dayjs(time, 'HH:mm', true);
+    if (hm.isValid()) return hm.format('hh:mm A');
+    return time;
+  };
+
+  const formatDate = (date?: string) => {
+    if (!date) return '-';
+    const d = dayjs(date);
+    if (d.isValid()) return d.format('DD MMM YYYY');
+    return date;
+  };
+
+  // Build a map of employeeId -> employee for quick lookup
+  const employeeIdToName = new Map<string, string>(
+    (employeesData || []).map((e: Employee) => [String((e.id || (e as any)._id)), e.name])
+  );
+
   const columns = [
     {
       key: 'employeeName' as keyof AttendanceRecord,
-      label: 'Employee',
+      label: 'Employee Name',
       sortable: true,
-      render: (_: any, record: AttendanceRecord) => (
+      sortType: 'string' as const,
+      sortAccessor: (row: AttendanceRecord) => row.employeeName || employeeIdToName.get(String(row.employeeId)) || '',
+      render: (value: string) => (
         <div>
-          <div className="font-medium">{record.employeeName}</div>
-          <div className="text-sm text-muted-foreground">
-            {dayjs(record.date).format('dddd, MMM DD')}
-          </div>
+          <div className="font-medium">{value}</div>
         </div>
       ),
     },
     {
+      key: 'date' as keyof AttendanceRecord,
+      label: 'Date',
+      sortable: true,
+      sortType: 'date' as const,
+      sortAccessor: (row: AttendanceRecord) => row.date,
+      render: (value: string) => formatDate(value),
+    },
+    {
       key: 'checkIn' as keyof AttendanceRecord,
       label: 'Check In',
-      render: (value: string) => value || '-',
+      render: (value: string, record: AttendanceRecord) => {
+        const start = dayjs(`${record.date} 09:15`, 'YYYY-MM-DD HH:mm');
+        const v = value && (value.includes('T') ? dayjs(value) : dayjs(`${record.date} ${value}`, 'YYYY-MM-DD HH:mm'));
+        const isLate = !!(v && v.isValid() && v.isAfter(start));
+        return (
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span>{formatTime(value)}</span>
+            {isLate && <Badge variant="secondary">Late</Badge>}
+            {isHR && !value && (
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onCheckIn(record); }}>Check In</Button>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'checkOut' as keyof AttendanceRecord,
       label: 'Check Out',
-      render: (value: string) => value || '-',
+      render: (value: string, record: AttendanceRecord) => {
+        const cutoff = dayjs(`${record.date} 17:00`, 'YYYY-MM-DD HH:mm');
+        const v = value && (value.includes('T') ? dayjs(value) : dayjs(`${record.date} ${value}`, 'YYYY-MM-DD HH:mm'));
+        const isEarly = !!(v && v.isValid() && v.isBefore(cutoff));
+        return (
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span>{formatTime(value)}</span>
+            {isEarly && <Badge variant="secondary">Early</Badge>}
+            {isHR && !value && (
+              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onCheckOut(record); }}>Check Out</Button>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'hoursWorked' as keyof AttendanceRecord,
       label: 'Hours',
-      render: (value: number) => value ? `${value}h` : '-',
+      sortable: true,
+      sortType: 'number' as const,
+      sortAccessor: (row: AttendanceRecord) => {
+        const parseTime = (date: string, t?: string) => {
+          if (!t) return 0;
+          if (t.includes('T')) {
+            const d = dayjs(t);
+            return d.isValid() ? d.valueOf() : 0;
+          }
+          const d = dayjs(`${date} ${t}`, 'YYYY-MM-DD HH:mm');
+          return d.isValid() ? d.valueOf() : 0;
+        };
+        const start = parseTime(row.date, row.checkIn);
+        const end = parseTime(row.date, row.checkOut);
+        if (!start || !end) return 0;
+        const diffMin = Math.max(0, Math.floor((end - start) / 60000));
+        return diffMin;
+      },
+      render: (_: number, record: AttendanceRecord) => {
+        const parseTime = (date: string, t?: string) => {
+          if (!t) return null;
+          if (t.includes('T')) {
+            const d = dayjs(t);
+            return d.isValid() ? d : null;
+          }
+          const d = dayjs(`${date} ${t}`, 'YYYY-MM-DD HH:mm');
+          return d.isValid() ? d : null;
+        };
+        const start = parseTime(record.date, record.checkIn);
+        const end = parseTime(record.date, record.checkOut);
+        if (!start || !end) return '-';
+        const diffMin = Math.max(0, end.diff(start, 'minute'));
+        const hours = Math.floor(diffMin / 60);
+        const minutes = diffMin % 60;
+        return `${hours}h ${minutes}m`;
+      },
     },
     {
       key: 'status' as keyof AttendanceRecord,
       label: 'Status',
+      sortable: true,
+      sortType: 'string' as const,
+      sortAccessor: (row: AttendanceRecord) => String(row.status || ''),
       render: (status: string) => (
         <Badge variant={
           status === 'present' ? 'default' :
@@ -130,10 +354,36 @@ export default function AttendancePage() {
         </Badge>
       ),
     },
+    ...(isHR ? [{
+      key: 'actions' as any,
+      label: 'Actions',
+      render: (_: any, record: AttendanceRecord) => (
+        <TooltipProvider>
+          <div className="flex gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleEdit(record); }}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Edit attendance record</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="icon" variant="ghost" className="text-red-600 hover:text-red-700" onClick={(e) => { e.stopPropagation(); handleDeleteClick(record); }}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Delete</TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+      )
+    }] : []),
   ];
 
   const filters = (
-    <div className="flex gap-2">
+    <div className="flex gap-2 flex-wrap items-center">
       <Select
         value={attendanceFilters.month}
         onValueChange={(value: string) => setAttendanceFilters({ month: value })}
@@ -163,8 +413,8 @@ export default function AttendancePage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Employees</SelectItem>
-            {mockEmployees.map((emp) => (
-              <SelectItem key={emp.id} value={emp.id}>
+            {employeesData?.map((emp: Employee) => (
+              <SelectItem key={(emp.id || (emp as any)._id)} value={emp.name}>
                 {emp.name}
               </SelectItem>
             ))}
@@ -187,35 +437,384 @@ export default function AttendancePage() {
           <SelectItem value="holiday">Holiday</SelectItem>
         </SelectContent>
       </Select>
+
+      <div className="flex items-center gap-2">
+        <Input
+          type="date"
+          value={rangeStart}
+          onChange={(e) => setRangeStart(e.target.value)}
+        />
+        <span className="text-sm text-muted-foreground">to</span>
+        <Input
+          type="date"
+          value={rangeEnd}
+          onChange={(e) => setRangeEnd(e.target.value)}
+        />
+      </div>
     </div>
   );
 
-  if (loading) {
+  if (isLoading) {
     return <TableSkeleton />;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Attendance</h1>
-          <p className="text-muted-foreground">
-            {userRole === 'employee' ? 'Your attendance records' : 'Employee attendance tracking'}
-          </p>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Attendance Tracker</h1>
+            <p className="text-muted-foreground">
+              {userRole === 'employee' ? 'Your attendance records' : 'Employee attendance tracking'}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            {isHR && activeTab === 'mark' && (
+              <Button onClick={() => { 
+                setEditing({ 
+                  date: dayjs().format('YYYY-MM-DD'), 
+                  status: 'Present' as any,
+                  employeeId: '',
+                  employeeName: ''
+                }); 
+                setEditOpen(true); 
+              }}>Add</Button>
+            )}
+            <Button onClick={exportToCsv} variant="outline">
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          </div>
         </div>
-        <Button onClick={exportToCsv} variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
+
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'view' | 'mark')}>
+          <TabsList>
+            <TabsTrigger value="view">View Attendance</TabsTrigger>
+            <TabsTrigger value="mark">Mark Attendance</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {activeTab === 'mark' && (
+          <div className="flex items-center gap-3">
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => {
+                setEditing({
+                  date: dayjs().format('YYYY-MM-DD'),
+                  status: 'Present' as any,
+                  employeeId: '',
+                  employeeName: ''
+                });
+                setEditOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Mark Individual
+            </Button>
+
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => {
+                setBulkDate(dayjs().format('YYYY-MM-DD'));
+                setBulkCheckIn('');
+                setBulkCheckOut('');
+                setSelectedBulk(new Set());
+                setBulkOpen(true);
+              }}
+            >
+              <Users className="mr-2 h-4 w-4" /> Mark Bulk Attendance
+            </Button>
+          </div>
+        )}
       </div>
 
       <DataTable
-        data={attendance}
+        data={((AttendanceData ?? []) as AttendanceRecord[])
+          .map((rec) => ({
+            ...rec,
+            employeeName: rec.employeeName || employeeIdToName.get(String(rec.employeeId)) || rec.employeeName,
+            status: rec.status,
+          }))
+          .filter((rec) => {
+            // Date filter: range if provided, else exact if dateFilter
+            if (rangeStart || rangeEnd) {
+              const d = dayjs(rec.date);
+              if (!d.isValid()) return false;
+              if (rangeStart && d.isBefore(dayjs(rangeStart), 'day')) return false;
+              if (rangeEnd && d.isAfter(dayjs(rangeEnd), 'day')) return false;
+            } else if (dateFilter && rec.date !== dateFilter) {
+              return false;
+            }
+            // Month filter: YYYY-MM
+            if (attendanceFilters.month) {
+              const recMonth = dayjs(rec.date).isValid() ? dayjs(rec.date).format('YYYY-MM') : String(rec.date).slice(0, 7);
+              if (recMonth !== attendanceFilters.month) return false;
+            }
+            // Status filter
+            if (attendanceFilters.status && attendanceFilters.status !== 'all') {
+              const s = String(rec.status || '').toLowerCase();
+              if (s !== attendanceFilters.status.toLowerCase()) return false;
+            }
+            // Employee filter by name (from dropdown or search)
+            if (attendanceFilters.employee && attendanceFilters.employee !== 'all') {
+              const q = attendanceFilters.employee.toLowerCase();
+              if (!String(rec.employeeName || '').toLowerCase().includes(q)) return false;
+            }
+            return true;
+          })}
         columns={columns}
-        searchPlaceholder="Search by employee name..."
+        searchPlaceholder="Search by name, status, date..."
         onSearch={(query) => setAttendanceFilters({ employee: query })}
         filters={filters}
       />
+
+      {isHR && (
+        <EditModal
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          title={editing?.id || (editing as any)?._id ? 'Edit Attendance' : 'Add Attendance'}
+          onSave={() => {
+            if (editing) {
+              // Validation for new attendance records
+              if (!editing.id && !(editing as any)._id) {
+                if (!editing.employeeId) {
+                  toast.error('Please select an employee');
+                  return;
+                }
+                if (!editing.employeeName) {
+                  toast.error('Please select an employee');
+                  return;
+                }
+              }
+
+              // Convert time format for API
+              const toIso = (date?: string, hhmm?: string) => {
+                if (!date || !hhmm) return undefined as unknown as string;
+                return dayjs(`${date} ${hhmm}`).toISOString();
+              };
+
+              const statusValue = (editing.status || 'present').toString().toLowerCase();
+              const validStatus = ['present', 'absent', 'leave', 'holiday', 'half-day'].includes(statusValue) 
+                ? statusValue as 'present' | 'absent' | 'leave' | 'holiday' | 'half-day'
+                : 'present';
+
+              const payload = {
+                ...editing,
+                checkIn: editing.checkIn?.includes('T') ? editing.checkIn : toIso(editing.date, editing.checkIn),
+                checkOut: editing.checkOut?.includes('T') ? editing.checkOut : toIso(editing.date, editing.checkOut),
+                status: validStatus
+              };
+              
+              console.log('Final payload before API call:', payload);
+              saveMutation.mutate(payload);
+            }
+          }}
+          isSaving={saveMutation.isPending}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Employee</label>
+              {editing?.id || (editing as any)?._id ? (
+                // For editing existing records, show input box
+                <Input 
+                  type="text" 
+                  value={editing?.employeeName || ''} 
+                  onChange={(e) => setEditing({ ...(editing || {}), employeeName: e.target.value })}
+                  placeholder="Enter employee name"
+                />
+              ) : (
+                // For adding new records, show dropdown
+                <Select 
+                  value={editing?.employeeId || ''} 
+                  onValueChange={(v) => {
+                    const emp = (employeesData || []).find((e: Employee) => (e.id || (e as any)._id) === v);
+                    setEditing({ ...(editing || {}), employeeId: v, employeeName: emp?.name || '' });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employeesData?.map((emp: Employee) => (
+                      <SelectItem key={(emp.id || (emp as any)._id)} value={(emp.id || (emp as any)._id)}>
+                        {emp.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date</label>
+              <Input type="date" value={editing?.date || dayjs().format('YYYY-MM-DD')} onChange={e => setEditing({ ...(editing || {}), date: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Check In</label>
+              <Input type="time" value={editing?.checkIn || ''} onChange={e => setEditing({ ...(editing || {}), checkIn: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Check Out</label>
+              <Input type="time" value={editing?.checkOut || ''} onChange={e => setEditing({ ...(editing || {}), checkOut: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <Select value={(editing?.status as any) || 'Present'} onValueChange={(v) => setEditing({ ...(editing || {}), status: v as any })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Present">Present</SelectItem>
+                  <SelectItem value="Absent">Absent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </EditModal>
+      )}
+
+      {/* Bulk Mark Dialog */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark Bulk Attendance</DialogTitle>
+            <DialogDescription>Select date and optional times, then apply to all employees not yet marked for that date.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date</label>
+              <Input type="date" value={bulkDate} onChange={(e) => setBulkDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Check In (optional)</label>
+              <Input type="time" value={bulkCheckIn} onChange={(e) => setBulkCheckIn(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Check Out (optional)</label>
+              <Input type="time" value={bulkCheckOut} onChange={(e) => setBulkCheckOut(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as 'Present' | 'Absent')}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Present">Present</SelectItem>
+                  <SelectItem value="Absent">Absent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Select Employees</label>
+                <div className="flex items-center gap-2 text-sm">
+                  <span>Select All</span>
+                  <Checkbox
+                    checked={selectAllBulk}
+                    onCheckedChange={(v) => {
+                      const flag = Boolean(v);
+                      setSelectAllBulk(flag);
+                      if (flag) setSelectedBulk(new Set(computedAllEmployeeIds));
+                      else setSelectedBulk(new Set());
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="max-h-64 overflow-auto rounded-md border p-2 space-y-2">
+                {employeesData?.map((emp: Employee) => {
+                  const id = String(emp.id || (emp as any)._id);
+                  const inputId = `bulk-emp-${id}`;
+                  const checked = selectedBulk.has(id);
+                  return (
+                    <div key={id} className="flex items-center gap-3 text-sm">
+                      <Checkbox
+                        id={inputId}
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const shouldCheck = Boolean(v);
+                          const next = new Set(selectedBulk);
+                          if (shouldCheck) next.add(id); else next.delete(id);
+                          setSelectedBulk(next);
+                        }}
+                      />
+                      <label htmlFor={inputId} className="cursor-pointer select-none">
+                        {emp.name}
+                        {emp.designation ? ` - ${emp.designation}` : ''}
+                      </label>
+                    </div>
+                  );
+                })}
+                {!employeesData?.length && (
+                  <div className="text-sm text-muted-foreground">No employees found.</div>
+                )}
+              </div>
+              <div className="text-sm text-muted-foreground">{selectedBulk.size} employees selected</div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={bulkLoading || (!selectAllBulk && selectedBulk.size === 0)}
+              onClick={async () => {
+                if (!bulkDate) {
+                  toast.error('Please select a date');
+                  return;
+                }
+                try {
+                  setBulkLoading(true);
+                  const toIso = (date?: string, hhmm?: string) => {
+                    if (!date || !hhmm) return undefined as unknown as string;
+                    return dayjs(`${date} ${hhmm}`).toISOString();
+                  };
+                  const payload = {
+                    date: bulkDate,
+                    checkIn: bulkCheckIn ? toIso(bulkDate, bulkCheckIn) : undefined,
+                    checkOut: bulkCheckOut ? toIso(bulkDate, bulkCheckOut) : undefined,
+                    status: bulkStatus,
+                    selectAll: selectAllBulk,
+                    selectedEmployees: selectAllBulk ? [] : Array.from(selectedBulk),
+                  } as any;
+                  await api.post('/hr/bulkAttendance', payload);
+                  toast.success('Bulk attendance marked successfully');
+                  qc.invalidateQueries({ queryKey: ['attendance'] });
+                  setBulkOpen(false);
+                } catch (e) {
+                  toast.error('Bulk mark failed');
+                } finally {
+                  setBulkLoading(false);
+                }
+              }}
+            >
+              {bulkLoading ? 'Marking...' : 'Mark Attendance'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the attendance record for <strong>{deletingRecord?.employeeName}</strong> on <strong>{deletingRecord?.date ? formatDate(deletingRecord.date) : ''}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

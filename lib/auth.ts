@@ -147,7 +147,7 @@ export const authService = {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await axios.post(`${BACKEND_URL}/upload/profile-picture`, formData, {
+      const response = await axios.post(`${BACKEND_URL}upload/profile-picture`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',

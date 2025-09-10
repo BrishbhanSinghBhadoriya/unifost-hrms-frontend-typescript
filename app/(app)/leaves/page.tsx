@@ -58,7 +58,7 @@ export default function LeavesPage() {
         }
         if (leaveFilters.status && leaveFilters.status !== 'all') params.append('status', leaveFilters.status);
         if (leaveFilters.type && leaveFilters.type !== 'all') params.append('type', leaveFilters.type);
-        url = `/api/leaves?${params.toString()}`;
+        url = `leaves?${params.toString()}`;
       }
       const token= Cookies.get('token');
       const response = await api.get(url, {

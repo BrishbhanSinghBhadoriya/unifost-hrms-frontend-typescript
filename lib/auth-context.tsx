@@ -19,7 +19,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in on app load
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
       setUser(currentUser);
@@ -28,16 +27,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    console.log('🔐 AuthContext: login called with:', { username, password });
+    console.log('AuthContext: login called with:', { username, password });
     const result = await authService.login(username, password);
-    console.log('🔐 AuthContext: authService result:', result);
+    console.log('AuthContext: authService result:', result);
     
     if (result.success && result.user) {
-      console.log('🔐 AuthContext: Setting user:', result.user);
+      console.log('AuthContext: Setting user:', result.user);
       setUser(result.user);
       return true;
     }
-    console.log('🔐 AuthContext: Login failed');
+    console.log('AuthContext: Login failed');
     return false;
   };
 

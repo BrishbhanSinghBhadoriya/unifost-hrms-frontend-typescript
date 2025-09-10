@@ -30,7 +30,7 @@ export const useFiltersStore = create<FiltersState>((set) => ({
   },
   attendanceFilters: {
     employee: '',
-    month: new Date().toISOString().substring(0, 7),
+    month: '',
     status: '',
   },
   leaveFilters: {
@@ -53,7 +53,7 @@ export const useFiltersStore = create<FiltersState>((set) => ({
   resetFilters: () =>
     set({
       employeeFilters: { search: '', department: '', status: '' },
-      attendanceFilters: { employee: '', month: new Date().toISOString().substring(0, 7), status: '' },
+      attendanceFilters: { employee: '', month: '', status: '' },
       leaveFilters: { status: '', type: '', employee: '' },
     }),
 }));

@@ -18,6 +18,7 @@ import {
   PieChart,
 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
@@ -86,11 +87,26 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Hero / Profile Header */}
-      <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-blue-600/10 via-indigo-500/10 to-sky-400/10">
-        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-blue-500/10 blur-2xl" />
-        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-indigo-500/10 blur-2xl" />
-        <div className="p-6 md:p-8 flex items-center gap-4 md:gap-6">
+      {/* Hero / Profile Header with Image Slider */}
+      <div className="relative overflow-hidden rounded-2xl border">
+        <Carousel className="w-full">
+          <CarouselContent>
+            {[
+              'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1600',
+              'https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?auto=compress&cs=tinysrgb&w=1600',
+              'https://images.pexels.com/photos/3184160/pexels-photo-3184160.jpeg?auto=compress&cs=tinysrgb&w=1600',
+            ].map((src, idx) => (
+              <CarouselItem key={idx}>
+                <div className="relative h-40 sm:h-56 md:h-64 lg:h-72 w-full">
+                  <img src={src} alt={`slide-${idx+1}`} className="h-full w-full object-cover" />
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious className="left-3 bg-background/70 backdrop-blur" />
+          <CarouselNext className="right-3 bg-background/70 backdrop-blur" />
+        </Carousel>
+        <div className="p-6 md:p-8 flex items-center gap-4 md:gap-6 bg-gradient-to-br from-blue-600/10 via-indigo-500/10 to-sky-400/10 border-t">
           <Avatar className="h-14 w-14">
             <AvatarImage src={user?.profilePicture || ''} alt={user?.name} />
             <AvatarFallback>{user?.name?.split(' ').map(n => n[0]).join('')}</AvatarFallback>

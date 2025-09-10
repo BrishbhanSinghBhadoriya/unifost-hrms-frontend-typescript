@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
@@ -29,54 +29,85 @@ import { useFiltersStore } from '@/store/filters';
 import { UserPlus, Eye, Edit, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import Cookies from "js-cookie";
+import { useQuery } from '@tanstack/react-query';
+import { fetchEmployees, PaginationParams } from '@/components/functions/Employee';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+
+
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const router = useRouter();
   const { employeeFilters, setEmployeeFilters } = useFiltersStore();
+  
+  // Pagination state
+  const [paginationParams, setPaginationParams] = useState<PaginationParams>({
+    page: 1,
+    limit: 10,
+    sortBy: 'createdAt',
+    sortOrder: 'desc'
+  });
 
-  useEffect(() => {
-    fetchEmployees();
-  }, [employeeFilters]);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['employees', paginationParams],
+    queryFn: () => fetchEmployees(paginationParams),
+  });
 
-  const fetchEmployees = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (employeeFilters.search) params.append('search', employeeFilters.search);
-      if (employeeFilters.department && employeeFilters.department !== 'all') params.append('department', employeeFilters.department);
-      if (employeeFilters.status && employeeFilters.status !== 'all') params.append('status', employeeFilters.status);
+  // Debug logging
+  console.log('Employees data:', data);
+  console.log('Pagination params:', paginationParams);
 
-      const response = await api.get(`/employees?${params.toString()}`);
-      setEmployees(response.data);
-    } catch (error) {
-      toast.error('Failed to fetch employees');
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   const handleAddEmployee = async (data: any) => {
     try {
       await api.post('/employees', data);
       toast.success('Employee added successfully');
       setShowAddDialog(false);
-      fetchEmployees();
+      // Optionally: invalidate query here if using a query client
     } catch (error) {
       toast.error('Failed to add employee');
     }
+  };
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setPaginationParams(prev => ({ ...prev, page }));
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setPaginationParams(prev => ({ ...prev, limit, page: 1 }));
+  };
+
+  const handleSearch = (search: string) => {
+    setPaginationParams(prev => ({ ...prev, search, page: 1 }));
+  };
+
+  const handleDepartmentFilter = (department: string) => {
+    setPaginationParams(prev => ({ 
+      ...prev, 
+      department: department === 'all' ? undefined : department, 
+      page: 1 
+    }));
+  };
+
+  const handleStatusFilter = (status: string) => {
+    setPaginationParams(prev => ({ 
+      ...prev, 
+      status: status === 'all' ? undefined : status, 
+      page: 1 
+    }));
   };
 
   const columns = [
     {
       key: 'name' as keyof Employee,
       label: 'Employee',
-      render: (_, employee: Employee) => (
+      render: (_value: unknown, employee: Employee) => (
         <div className="flex items-center gap-3">
           <Avatar>
-            <AvatarImage src={employee.avatarUrl} />
+            <AvatarImage src={employee.profilePicture} />
             <AvatarFallback>
               {employee.name.split(' ').map(n => n[0]).join('')}
             </AvatarFallback>
@@ -125,8 +156,8 @@ export default function EmployeesPage() {
   const filters = (
     <div className="flex gap-2">
       <Select
-        value={employeeFilters.department}
-        onValueChange={(value) => setEmployeeFilters({ department: value })}
+        value={paginationParams.department || 'all'}
+        onValueChange={handleDepartmentFilter}
       >
         <SelectTrigger className="w-40">
           <SelectValue placeholder="Department" />
@@ -142,8 +173,8 @@ export default function EmployeesPage() {
       </Select>
 
       <Select
-        value={employeeFilters.status}
-        onValueChange={(value) => setEmployeeFilters({ status: value })}
+        value={paginationParams.status || 'all'}
+        onValueChange={handleStatusFilter}
       >
         <SelectTrigger className="w-32">
           <SelectValue placeholder="Status" />
@@ -163,7 +194,7 @@ export default function EmployeesPage() {
       <Button
         size="sm"
         variant="ghost"
-        onClick={() => router.push(`/employees/${employee.id}`)}
+        onClick={() => router.push(`/employees/${employee._id ?? employee.id}`)}
       >
         <Eye className="h-4 w-4" />
       </Button>
@@ -176,7 +207,7 @@ export default function EmployeesPage() {
     </div>
   );
 
-  if (loading) {
+  if (isLoading) {
     return <TableSkeleton />;
   }
 
@@ -212,14 +243,51 @@ export default function EmployeesPage() {
       </div>
 
       <DataTable
-        data={employees}
+        data={data?.data ?? (Array.isArray(data) ? data : [])}
         columns={columns}
         searchPlaceholder="Search by name or employee code..."
-        onSearch={(query) => setEmployeeFilters({ search: query })}
+        onSearch={handleSearch}
         onRowClick={(employee) => router.push(`/employees/${employee.id}`)}
         actions={actions}
         filters={filters}
       />
+
+      {data?.pagination ? (
+        <PaginationControls
+          currentPage={data.pagination.currentPage}
+          totalPages={data.pagination.totalPages}
+          totalItems={data.pagination.totalEmployees}
+          limit={data.pagination.limit}
+          hasNextPage={data.pagination.hasNextPage}
+          hasPrevPage={data.pagination.hasPrevPage}
+          onPageChange={handlePageChange}
+          onLimitChange={handleLimitChange}
+        />
+      ) : data?.data && data.data.length > 0 ? (
+        // Fallback pagination if API doesn't return pagination object
+        <PaginationControls
+          currentPage={paginationParams.page || 1}
+          totalPages={Math.ceil(data.data.length / (paginationParams.limit || 10))}
+          totalItems={data.data.length}
+          limit={paginationParams.limit || 10}
+          hasNextPage={false}
+          hasPrevPage={false}
+          onPageChange={handlePageChange}
+          onLimitChange={handleLimitChange}
+        />
+      ) : data && Array.isArray(data) && data.length > 0 ? (
+        // Another fallback for direct array response
+        <PaginationControls
+          currentPage={paginationParams.page || 1}
+          totalPages={Math.ceil(data.length / (paginationParams.limit || 10))}
+          totalItems={data.length}
+          limit={paginationParams.limit || 10}
+          hasNextPage={false}
+          hasPrevPage={false}
+          onPageChange={handlePageChange}
+          onLimitChange={handleLimitChange}
+        />
+      ) : null}
     </div>
   );
 }

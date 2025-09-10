@@ -299,9 +299,7 @@ export const mockLeaveBalances: LeaveBalance[] = [
 ];
 
 // Helper functions
-export const getEmployeeById = (id: string): Employee | undefined => {
-  return mockEmployees.find(emp => emp.id === id);
-};
+
 
 export const getEmployeesByDepartment = (department: string): Employee[] => {
   return mockEmployees.filter(emp => emp.department === department);

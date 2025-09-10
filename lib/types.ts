@@ -1,4 +1,5 @@
 export interface Employee {
+  _id: string;
   id: string;
   empCode: string;
   name: string;
@@ -11,15 +12,18 @@ export interface Employee {
   managerName?: string;
   status: 'active' | 'inactive' | 'terminated';
   joinedOn: string;
-  avatarUrl?: string;
-  dateOfBirth?: string;
+  profilePicture?: string;
+  dob?: string;
   address?: string;
   emergencyContact?: {
     name: string;
     phone: string;
     relationship: string;
+   
   };
+  isActive: boolean;
   salary?: number;
+  createdAt: string;
 }
 
 export interface AttendanceRecord {
