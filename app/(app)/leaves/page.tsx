@@ -20,89 +20,82 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import { LeaveRequest } from '@/lib/types';
 import { mockEmployees } from '@/lib/mock';
 import { useFiltersStore } from '@/store/filters';
 import { Plus, Check, X } from 'lucide-react';
-import api from '@/lib/api';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
-import Cookies from "js-cookie";
+import getLeaves from '@/components/functions/getLeaves';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { approveLeave, rejectLeave } from '@/components/functions/updateLeaves';
+import { useMutation } from '@tanstack/react-query';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 
 export default function LeavesPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  
   const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
   const { leaveFilters, setLeaveFilters } = useFiltersStore();
+  const [activeTab, setActiveTab] = useState<'view' | 'mark'>('view');
+
   const userRole = user?.role || 'employee';
-  const currentEmployeeId = user?.id;
 
-  useEffect(() => {
-    fetchLeaves();
-  }, []);
+  const qc = useQueryClient();
+  const approveMutation = useMutation({
+    mutationFn: async (leaveId: string) => {
+      return await approveLeave(leaveId);
+    },
+    onSuccess: () => {
+      toast.success('Leave request approved successfully');
+      qc.invalidateQueries({ queryKey: ['leaves', userRole] });
+    },
+    onError: (error) => {
+      toast.error('Failed to approve leave request');
+    },
+  });
+  const rejectMutation = useMutation({
+    mutationFn: async (leaveId: string) => {
+      return await rejectLeave(leaveId);
+    },
+    onSuccess: () => {
+      toast.success('Leave request rejected successfully');
+      qc.invalidateQueries({ queryKey: ['leaves', userRole] });
+    },
+    onError: (error) => {
+      toast.error('Failed to reject leave request');
+    },
+  });
 
-  const fetchLeaves = async () => {
-    try {
-      setLoading(true);
-      let url = '';
-      if (userRole === 'employee') {
-        url = '/leaves/me';
-      } else {
-        const params = new URLSearchParams();
-        if (leaveFilters.employee && leaveFilters.employee !== 'all') {
-          params.append('employee', leaveFilters.employee);
-        }
-        if (leaveFilters.status && leaveFilters.status !== 'all') params.append('status', leaveFilters.status);
-        if (leaveFilters.type && leaveFilters.type !== 'all') params.append('type', leaveFilters.type);
-        url = `leaves?${params.toString()}`;
-      }
-      const token= Cookies.get('token');
-      const response = await api.get(url, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-     
-
-
-      const body: any = response.data;
-      const raw = Array.isArray(body)
-        ? body
-        : Array.isArray(body?.data)
-          ? body.data
-          : Array.isArray(body?.leaves)
-            ? body.leaves
-            : [];
-      const rows = raw.map((l: any) => ({
-        id: l._id || l.id,
-        employeeName: user?.name || '',
-        type: l.leaveType || l.type,
-        startDate: l.startDate,
-        endDate: l.endDate,
-        days: l.totalDays || l.days,
-        appliedOn: l.createdAt || l.appliedOn,
-        status: l.status,
-        reason: l.reason,
-      }));
-      setLeaves(rows as any);
-    } catch (error) {
-      toast.error('Failed to fetch leave requests');
-    } finally {
-      setLoading(false);
-    }
-  };
   
+  const { data: leavesData, isLoading } = useQuery({
+    queryKey: ['leaves', userRole],
+    queryFn: () => getLeaves(userRole),
+  });
+  const result = leavesData || [];
+  const employeeLeaves = (result as any[]).filter((l: any) => l?.employeeRole === 'employee');
+  const hrLeaves = (result as any[]).filter((l: any) => l?.employeeRole === 'hr');
+  const tableData = (activeTab === 'mark') ? hrLeaves : employeeLeaves;
+  console.log('leaves', result);
 
+  
+  
   const handleApproveReject = async (leaveId: string, action: 'approve' | 'reject') => {
+    console.log('handleApproveReject', leaveId, action);
     try {
-      // In a real app, this would be a PUT request to update the leave status
-      toast.success(`Leave request ${action}d successfully`);
+      if (action === 'approve') {
+        approveMutation.mutate(leaveId);
+      } else {
+        rejectMutation.mutate(leaveId);
+      }
+      
       setSelectedLeave(null);
-      fetchLeaves();
+      
     } catch (error) {
       toast.error(`Failed to ${action} leave request`);
     }
@@ -113,22 +106,22 @@ export default function LeavesPage() {
       key: 'employeeName' as keyof LeaveRequest,
       label: 'Employee',
       sortable: true,
-      render: (_, leave: LeaveRequest) => (
+      render: (_value: any, leave: LeaveRequest) => (
         <div>
           <div className="font-medium">{leave.employeeName}</div>
-          <div className="text-sm text-muted-foreground capitalize">{leave.type} leave</div>
+          <div className="text-sm text-muted-foreground capitalize">{leave.leaveType} leave</div>
         </div>
       ),
     },
     {
       key: 'startDate' as keyof LeaveRequest,
       label: 'Duration',
-      render: (_, leave: LeaveRequest) => (
+      render: (_value: any, leave: LeaveRequest) => (
         <div>
           <div className="font-medium">
             {dayjs(leave.startDate).format('MMM DD')} - {dayjs(leave.endDate).format('MMM DD')}
           </div>
-          <div className="text-sm text-muted-foreground">{leave.days} days</div>
+          <div className="text-sm text-muted-foreground">{leave.totalDays} days</div>
         </div>
       ),
     },
@@ -153,11 +146,16 @@ export default function LeavesPage() {
     {
       key: 'reason' as keyof LeaveRequest,
       label: 'Reason',
-      render: (reason: string) => (
-        <div className="max-w-48 truncate" title={reason}>
-          {reason}
-        </div>
-      ),
+      render: (reason: string) => {
+        const display = typeof reason === 'string' && reason.length > 30
+          ? `${reason.slice(0, 30)}...`
+          : reason;
+        return (
+          <div className="max-w-48" title={reason}>
+            {display}
+          </div>
+        );
+      },
     },
   ];
 
@@ -226,13 +224,13 @@ export default function LeavesPage() {
       >
         View
       </Button>
-      {userRole !== 'employee' && leave.status === 'pending' && (
+      {activeTab !== 'mark' && userRole !== 'employee' && leave.status === 'pending' && (
         <>
           <Button
             size="sm"
             variant="ghost"
             className="text-green-600 hover:text-green-700"
-            onClick={() => handleApproveReject(leave.id, 'approve')}
+            onClick={() => handleApproveReject(leave._id, 'approve')}
           >
             <Check className="h-4 w-4" />
           </Button>
@@ -240,7 +238,7 @@ export default function LeavesPage() {
             size="sm"
             variant="ghost"
             className="text-red-600 hover:text-red-700"
-            onClick={() => handleApproveReject(leave.id, 'reject')}
+            onClick={() => handleApproveReject(leave._id, 'reject')}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -249,7 +247,7 @@ export default function LeavesPage() {
     </div>
   );
 
-  if (loading) {
+  if (isLoading) {
     return <TableSkeleton />;
   }
 
@@ -257,22 +255,35 @@ export default function LeavesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
+          <div className='mb-5'>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'view' | 'mark')}>
+  <TabsList className="grid w-full grid-cols-2">
+    <TabsTrigger value="view" className="w-full">Employee Leave</TabsTrigger>
+    <TabsTrigger value="mark" className="w-full">HR Leave</TabsTrigger>
+  </TabsList>
+</Tabs>
+</div>
+
+
           <h1 className="text-3xl font-bold">Leave Requests</h1>
           <p className="text-muted-foreground">
             {userRole === 'employee' ? 'Your leave requests' : 'Manage employee leave requests'}
           </p>
         </div>
-        <Button onClick={() => router.push('/leaves/apply')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Apply Leave
-        </Button>
+        {activeTab === 'mark' ? (
+          <Button onClick={() => router.push('/leaves/apply')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Apply Leave
+          </Button>
+        ) : null}
       </div>
 
       <DataTable
-        data={leaves}
+        data={tableData as any}
         columns={columns}
         searchPlaceholder="Search by employee name..."
         onSearch={(query) => setLeaveFilters({ employee: query })}
+        
         actions={actions}
         filters={filters}
       />
@@ -295,7 +306,7 @@ export default function LeavesPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Leave Type</label>
-                  <p className="capitalize">{selectedLeave.type}</p>
+                  <p className="capitalize">{selectedLeave.leaveType}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Start Date</label>
@@ -307,7 +318,7 @@ export default function LeavesPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Days</label>
-                  <p>{selectedLeave.days}</p>
+                  <p>{selectedLeave.totalDays}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Status</label>
@@ -327,7 +338,7 @@ export default function LeavesPage() {
               {userRole !== 'employee' && selectedLeave.status === 'pending' && (
                 <div className="flex gap-3 pt-4">
                   <Button 
-                    onClick={() => handleApproveReject(selectedLeave.id, 'approve')}
+                    onClick={() => handleApproveReject(selectedLeave._id, 'approve')}
                     className="flex-1"
                   >
                     <Check className="mr-2 h-4 w-4" />
@@ -335,7 +346,7 @@ export default function LeavesPage() {
                   </Button>
                   <Button 
                     variant="destructive"
-                    onClick={() => handleApproveReject(selectedLeave.id, 'reject')}
+                    onClick={() => handleApproveReject(selectedLeave._id, 'reject')}
                     className="flex-1"
                   >
                     <X className="mr-2 h-4 w-4" />

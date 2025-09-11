@@ -48,12 +48,13 @@ export interface Holiday {
 }
 
 export interface LeaveRequest {
-  id: string;
+  _id: string;
   employeeId: string;
   employeeName: string;
-  type: 'casual' | 'sick' | 'earned' | 'maternity' | 'paternity' | 'unpaid';
+  leaveType: 'casual' | 'sick' | 'earned' | 'maternity' | 'paternity' | 'unpaid';
   startDate: string;
   endDate: string;
+  totalDays: number;
   days: number;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
