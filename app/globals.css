@@ -80,3 +80,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* React Big Calendar overrides */
+.rbc-off-range-bg {
+  background: transparent !important;
+}
+.rbc-off-range {
+  color: hsl(var(--muted-foreground)) !important;
+}
+.rbc-month-view .rbc-date-cell {
+  opacity: 1;
+}

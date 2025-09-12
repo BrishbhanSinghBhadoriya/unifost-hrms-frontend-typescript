@@ -1,36 +1,42 @@
 // Simple authentication utility for direct backend calls
   import axios from 'axios';
   import Cookies from "js-cookie";
+  import {User} from "@/lib/types"
 
 
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  name: string;
-  role: string;
-  department: string;
-  phone?: string;
-  gender?: string;
-  designation?: string;
-  profilePicture?: string;
-  dateOfBirth?: string;
-  // Extended fields from employee schema
-  isAdmin?: boolean;
-  isManager?: boolean;
-  isHR?: boolean;
-  isEmployee?: boolean;
-  isActive?: boolean;
-  employeeId?: string;
-  bankAccountType?: string;
-  country?: string;
-  lastLogin?: string;
-  achievements?: string[];
-  certifications?: string[];
-  skills?: string[];
-  salary?: number;
-  address?: string;
-}
+// export interface User {
+//   id: string;
+//   username: string;
+//   email: string;
+//   name: string;
+//   role: string;
+//   department: string;
+//   phone?: string;
+//   gender?: string;
+//   designation?: string;
+//   profilePicture?: string;
+//   dateOfBirth?: string;
+//   fatherName?: string;
+//   bloodGroup?: string;
+//   professionalEmailId?:string
+//   isAdmin?: boolean;
+//   isManager?: boolean;
+//   isHR?: boolean;
+//   isEmployee?: boolean;
+//   isActive?: boolean;
+//   employeeId?: string;
+//   bankAccountType?: string;
+//   country?: string;
+//   lastLogin?: string;
+//   achievements?: string[];
+//   certifications?: string[];
+//   skills?: string[];
+//   salary?: number;
+//   address?: any;
+//   experience?: any[];
+//   education?: any[];
+//   bankDetails?: any[];
+// }
 
 export interface LoginResponse {
   success: boolean;
@@ -50,6 +56,7 @@ export const authService = {
         username,
         password,
       });
+      
 
 
       if (response.status >= 200 && response.status < 300) {
@@ -69,7 +76,11 @@ export const authService = {
            gender: userData.user.gender,
            designation: userData.user.designation,
            profilePicture: userData.user.profilePicture,
-           dateOfBirth:userData.user.dob,
+           dob:userData.user.dob,
+           fatherName: userData.user.fatherName,
+           bloodGroup: userData.user.bloodGroup,
+           professionalEmailId:userData.user.professionalEmailId,
+           emergencyContactNo:userData.user.emergencyContactNo,
            isAdmin: userData.user.isAdmin,
            isManager: userData.user.isManager,
            isHR: userData.user.isHR,

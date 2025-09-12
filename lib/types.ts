@@ -3,6 +3,8 @@ export interface Employee {
   id: string;
   empCode: string;
   name: string;
+  fatherName:string,
+  bloodGroup:string,
   email: string;
   phone: string;
   
@@ -67,12 +69,37 @@ export interface LeaveRequest {
 
 export interface User {
   id: string;
+  _id?: string;
   username: string;
   email: string;
   role: 'employee' | 'manager' | 'hr' | 'admin';
   employeeId?: string;
   name: string;
   avatarUrl?: string;
+  profilePicture?: string;
+  phone?: number;
+  fatherName?: string;
+  isAdmin: boolean,
+  isManager:boolean,
+  isHR:boolean,
+  isEmployee:boolean,
+  isActive:boolean,
+  lastLogin?: string,
+  professionalEmailId:string,
+  emergencyContactNo:number
+  bloodGroup?: string;
+  dob?: string;
+  gender?: string;
+  country?: string;
+  address?: any;
+  department?: string;
+  designation?: string;
+  salary?: number;
+  bankAccountType?: string;
+  skills?: string[];
+  experience?: any[];
+  education?: any[];
+  bankDetails?: any[];
 }
 
 export interface Department {

@@ -55,10 +55,12 @@
     "input-otp": "^1.2.4",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.446.0",
+    "moment": "^2.30.1",
     "next": "13.5.1",
     "next-themes": "^0.3.0",
     "postcss": "8.4.30",
     "react": "18.2.0",
+    "react-big-calendar": "^1.19.4",
     "react-day-picker": "^8.10.1",
     "react-dom": "18.2.0",
     "react-hook-form": "^7.62.0",
@@ -74,6 +76,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@types/js-cookie": "^3.0.6"
+    "@types/js-cookie": "^3.0.6",
+    "@types/react-big-calendar": "^1.16.2"
   }
 }

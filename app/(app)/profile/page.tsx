@@ -14,13 +14,22 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { EditModal } from '@/components/ui/edit-modal';
+import { EditModalSection } from './_components/EditModal';
 
 import { User, Mail, Phone, MapPin, Users, Lock, Camera, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import Personal_Info from './_components/Personal_Info';
+import Contact_Info from './_components/Contact_Info';
+import JobTab from './_components/JobTab';
+import ExperienceTab from './_components/ExperienceTab';
+import EductionTab from './_components/EductionTab';
+import BankdetailsTab from './_components/BankdetailsTab';
 
 const personalInfoSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  dateOfBirth: z.string().optional(),
+  fatherName:z.string().min(4,'Name must be at least 4 characters'),
+  dob: z.string().optional(),
+  bloodGroup:z.string().optional(),
   address: z.string().optional(),
   gender: z.string().optional(),
   country: z.string().optional(),
@@ -58,14 +67,42 @@ const skillsSchema = z.object({
   skills: z.string().optional(), // comma-separated
 });
 
+const experienceSchema = z.object({
+  company: z.string().min(1, 'Company is required'),
+  designation: z.string().min(1, 'Designation is required'),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().optional(),
+  description: z.string().optional(),
+});
+
+const educationSchema = z.object({
+  degree: z.string().min(1, 'Degree is required'),
+  institution: z.string().optional(),
+  fieldOfStudy: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  grade: z.string().optional(),
+});
+
+const bankSchema = z.object({
+  bankName: z.string().min(1, 'Bank name is required'),
+  bankAccountNumber: z.string().min(1, 'Account number is required'),
+  bankAccountType: z.enum(['savings', 'current']).default('savings'),
+  bankIFSC: z.string().min(1, 'IFSC is required'),
+  bankAccountHolderName: z.string().min(1, 'Account holder name is required'),
+});
+
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [modalOpen, setModalOpen] = useState<null | 'personal' | 'contact' | 'emergency' | 'password'>(null);
+  const [modalOpen, setModalOpen] = useState<null | 'contact' | 'emergency' | 'password'>(null);
   const [jobModalOpen, setJobModalOpen] = useState(false);
   const [skillsModalOpen, setSkillsModalOpen] = useState(false);
   const [isSavingModal, setIsSavingModal] = useState(false);
+  const [expModalOpen, setExpModalOpen] = useState(false);
+  const [eduModalOpen, setEduModalOpen] = useState(false);
+  const [bankModalOpen, setBankModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toYMD = (d?: string) => {
@@ -82,7 +119,10 @@ export default function ProfilePage() {
     resolver: zodResolver(personalInfoSchema),
     defaultValues: {
       name: user?.name || '',
-      dateOfBirth: toYMD(user?.dateOfBirth), 
+      fatherName:(user as any)?.fatherName || '',
+
+      dob: toYMD(user?.dob), 
+      bloodGroup:(user as any)?.bloodGroup || '',
      address: user?.address || '',
      gender: user?.gender || '',
      country: user?.country || 'India',
@@ -133,22 +173,56 @@ export default function ProfilePage() {
     },
   });
 
-  const handlePersonalInfoSubmit = (data: any) => {
-    toast.success('Personal information updated successfully');
-  };
+  const experienceForm = useForm({
+    resolver: zodResolver(experienceSchema),
+    defaultValues: {
+      company: '',
+      designation: '',
+      startDate: '',
+      endDate: '',
+      description: '',
+    },
+  });
 
-  const handleContactSubmit = (data: any) => {
-    toast.success('Contact information updated successfully');
-  };
+  const educationForm = useForm({
+    resolver: zodResolver(educationSchema),
+    defaultValues: {
+      degree: '',
+      institution: '',
+      fieldOfStudy: '',
+      startDate: '',
+      endDate: '',
+      grade: '',
+    },
+  });
 
-  const handleEmergencyContactSubmit = (data: any) => {
-    toast.success('Emergency contact updated successfully');
-  };
+  const bankForm = useForm({
+    resolver: zodResolver(bankSchema),
+    defaultValues: {
+      bankName: '',
+      bankAccountNumber: '',
+      bankAccountType: 'savings',
+      bankIFSC: '',
+      bankAccountHolderName: '',
+    },
+  });
 
-  const handlePasswordSubmit = (data: any) => {
-    toast.success('Password changed successfully');
-    passwordForm.reset();
-  };
+  // const handlePersonalInfoSubmit = (data: any) => {
+  //   toast.success('Personal information updated successfully');
+  // };
+
+  // const handleContactSubmit = (data: any) => {
+  //   toast.success('Contact information updated successfully');
+  // };
+
+  // const handleEmergencyContactSubmit = (data: any) => {
+  //   toast.success('Emergency contact updated successfully');
+  // };
+
+  // const handlePasswordSubmit = (data: any) => {
+  //   toast.success('Password changed successfully');
+  //   passwordForm.reset();
+  // };
 
   const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -186,143 +260,16 @@ export default function ProfilePage() {
     fileInputRef.current?.click();
   };
 
-  const openEdit = (key: 'personal' | 'contact' | 'emergency' | 'password') => setModalOpen(key);
+  // const openEdit = (key: 'contact' | 'emergency' | 'password') => setModalOpen(key);
   const closeEdit = () => setModalOpen(null);
 
-  const savePersonal = async () => {
-    setIsSavingModal(true);
-    try {
-      const valid = await personalForm.trigger();
-      if (!valid) return;
-      const payload = {
-        name: personalForm.getValues('name'),
-        dateOfBirth: personalForm.getValues('dateOfBirth') || undefined,
-        address: personalForm.getValues('address') || undefined,
-        gender: personalForm.getValues('gender') || undefined,
-        country: personalForm.getValues('country') || undefined,
-      };
-      const res = await authService.updateEmployeeProfile(user!.id, payload);
-      if (res.success) {
-        const returned = res.data?.user || res.data;
-        console.log(returned);
-        updateUser({
-          name: returned?.name ?? payload.name,
-          dateOfBirth:returned?.dob,
-          address: returned?.address ?? payload.address,
-          gender: returned?.gender ?? payload.gender,
-          country: returned?.country ?? payload.country,
-        });
-        toast.success('Personal information saved');
-        closeEdit();
-      } else {
-        toast.error(res.message || 'Failed to save');
-      }
-    } finally {
-      setIsSavingModal(false);
-    }
-  };
-
-  const saveContact = async () => {
-    setIsSavingModal(true);
-    try {
-      const valid = await contactForm.trigger();
-      if (!valid) return;
-      const payload = {
-        email: contactForm.getValues('email'),
-        phone: contactForm.getValues('phone'),
-      };
-      const res = await authService.updateEmployeeProfile(user!.id, payload);
-      if (res.success) {
-        const returned = res.data?.user || res.data;
-        updateUser({ email: returned?.email ?? payload.email, phone: returned?.phone ?? payload.phone });
-        toast.success('Contact information saved');
-        closeEdit();
-      } else {
-        toast.error(res.message || 'Failed to save');
-      }
-    } finally {
-      setIsSavingModal(false);
-    }
-  };
-
-  const saveEmergency = async () => {
-    setIsSavingModal(true);
-    try {
-      const valid = await emergencyForm.trigger();
-      if (!valid) return;
-      const payload = {
-        emergencyContact: {
-          name: emergencyForm.getValues('emergencyName'),
-          phone: emergencyForm.getValues('emergencyPhone'),
-          relationship: emergencyForm.getValues('emergencyRelationship'),
-        }
-      };
-      const res = await authService.updateEmployeeProfile(user!.id, payload);
-      if (res.success) {
-        toast.success('Emergency contact saved');
-        closeEdit();
-      } else {
-        toast.error(res.message || 'Failed to save');
-      }
-    } finally {
-      setIsSavingModal(false);
-    }
-  };
-
-  const saveJob = async () => {
-    setIsSavingModal(true);
-    try {
-      const valid = await jobForm.trigger();
-      if (!valid) return;
-      const payload = jobForm.getValues();
-      const res = await authService.updateEmployeeProfile(user!.id, payload);
-      if (res.success) {
-        const returned = res.data?.user || res.data;
-        updateUser({
-          employeeId: returned?.employeeId ?? payload.employeeId,
-          department: returned?.department ?? payload.department,
-          designation: returned?.designation ?? payload.designation,
-          bankAccountType: returned?.bankAccountType ?? payload.bankAccountType,
-          salary: returned?.salary ?? payload.salary,
-        });
-        toast.success('Job information saved');
-        setJobModalOpen(false);
-      } else {
-        toast.error(res.message || 'Failed to save');
-      }
-    } finally {
-      setIsSavingModal(false);
-    }
-  };
-
-  const saveSkills = async () => {
-    setIsSavingModal(true);
-    try {
-      const valid = await skillsForm.trigger();
-      if (!valid) return;
-      const csv = (skillsForm.getValues('skills') || '').trim();
-      const skills = csv ? csv.split(',').map((s) => s.trim()).filter(Boolean) : [];
-      const payload = { skills };
-      const res = await authService.updateEmployeeProfile(user!.id, payload);
-      if (res.success) {
-        const returned = res.data?.user || res.data;
-        updateUser({ skills: returned?.skills ?? skills });
-        toast.success('Skills updated');
-        setSkillsModalOpen(false);
-      } else {
-        toast.error(res.message || 'Failed to save');
-      }
-    } finally {
-      setIsSavingModal(false);
-    }
-  };
 
   if (!user) {
     return <div>User not found. Please log in.</div>;
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-8 w-full max-w-none">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold">My Profile</h1>
@@ -336,7 +283,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Profile Header */}
-      <Card>
+      <Card className="shadow-sm">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div className="relative">
@@ -393,303 +340,47 @@ export default function ProfilePage() {
       </Card>
 
       {/* Profile Tabs */}
-      <Tabs defaultValue="personal" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="personal" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-7 rounded-lg bg-muted/40 p-1">
           <TabsTrigger value="personal">Personal</TabsTrigger>
           <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="job">Job</TabsTrigger>
-          <TabsTrigger value="skills">Skills</TabsTrigger>
+          <TabsTrigger value="experience">Experience</TabsTrigger>
+          <TabsTrigger value="education">Education</TabsTrigger>
+          <TabsTrigger value="bank">Bank</TabsTrigger>
+          <TabsTrigger value="document">Document</TabsTrigger>
+
+          
         </TabsList>
 
         <TabsContent value="personal" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>
-                Update your personal details
-              </CardDescription>
-              <div className="mt-2">
-                <Button size="sm" variant="outline" onClick={() => openEdit('personal')}>Edit</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={personalForm.handleSubmit(handlePersonalInfoSubmit)} className="space-y-4">
-                <fieldset disabled={!isEditing} className={!isEditing ? 'opacity-90' : ''}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      {...personalForm.register('name')}
-                    />
-                    {personalForm.formState.errors.name && (
-                      <p className="text-sm text-red-600">{personalForm.formState.errors.name.message}</p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                    <Input id="dateOfBirth" type="date" {...personalForm.register('dateOfBirth')} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">Gender</Label>
-                    <Input id="gender" {...personalForm.register('gender')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
-                    <Input id="country" {...personalForm.register('country')} />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    {...personalForm.register('address')}
-                    placeholder="Enter your full address"
-                  />
-                </div>
-                </fieldset>
-                {isEditing && <Button type="submit">Update Personal Info</Button>}
-              </form>
-            </CardContent>
-          </Card>
+          <Personal_Info/>  
         </TabsContent>
 
         <TabsContent value="contact" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
-              <CardDescription>
-                Update your contact details
-              </CardDescription>
-              <div className="mt-2">
-                <Button size="sm" variant="outline" onClick={() => openEdit('contact')}>Edit</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={contactForm.handleSubmit(handleContactSubmit)} className="space-y-4">
-                <fieldset disabled={!isEditing} className={!isEditing ? 'opacity-90' : ''}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...contactForm.register('email')}
-                    />
-                    {contactForm.formState.errors.email && (
-                      <p className="text-sm text-red-600">{contactForm.formState.errors.email.message}</p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      {...contactForm.register('phone')}
-                    />
-                    {contactForm.formState.errors.phone && (
-                      <p className="text-sm text-red-600">{contactForm.formState.errors.phone.message}</p>
-                    )}
-                  </div>
-                </div>
-                </fieldset>
-                {isEditing && <Button type="submit">Update Contact Info</Button>}
-              </form>
-            </CardContent>
-          </Card>
+          <Contact_Info/>
         </TabsContent>
 
-        {/* Emergency and Password tabs removed as requested */}
 
-        {/* Job Tab */}
         <TabsContent value="job" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Job Information</CardTitle>
-              <CardDescription>Update job and payroll details</CardDescription>
-              <div className="mt-2">
-                <Button size="sm" variant="outline" onClick={() => setJobModalOpen(true)}>Edit</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Employee ID</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{user.employeeId || '-'}</p>
-                </div>
-                <div>
-                  <Label>Department</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{user.department}</p>
-                </div>
-                <div>
-                  <Label>Designation</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{user.designation}</p>
-                </div>
-                <div>
-                  <Label>Bank Account Type</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{user.bankAccountType || '-'}</p>
-                </div>
-                <div>
-                  <Label>Salary</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{user.salary != null ? `₹ ${user.salary}` : '-'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <JobTab/>
         </TabsContent>
 
-        {/* Skills Tab */}
-        <TabsContent value="skills" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Skills</CardTitle>
-              <CardDescription>Manage your skills list</CardDescription>
-              <div className="mt-2">
-                <Button size="sm" variant="outline" onClick={() => setSkillsModalOpen(true)}>Edit</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div>
-                <Label>Current skills</Label>
-                <p className="text-sm text-muted-foreground mt-1">{Array.isArray(user.skills) ? user.skills.join(', ') : '-'}</p>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="experience" className="space-y-4">
+          <ExperienceTab/>
         </TabsContent>
+
+        <TabsContent value="education" className="space-y-4">
+          <EductionTab/>
+        </TabsContent>
+        <TabsContent value="bank" className="space-y-4">
+          <BankdetailsTab/>
+        </TabsContent>
+
       </Tabs>
 
       {/* Modals */}
-      <EditModal
-        open={modalOpen === 'personal'}
-        onOpenChange={(o) => (o ? openEdit('personal') : closeEdit())}
-        title="Edit Personal Information"
-        description="Update your personal details"
-        onSave={savePersonal}
-        isSaving={isSavingModal}
-      >
-        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-          <div className="space-y-2">
-            <Label htmlFor="modal_name">Full Name</Label>
-            <Input id="modal_name" {...personalForm.register('name')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modal_dob">Date of Birth</Label>
-            <Input id="modal_dob" type="date" {...personalForm.register('dateOfBirth')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modal_address">Address</Label>
-            <Input id="modal_address" {...personalForm.register('address')} />
-          </div>
-        </form>
-      </EditModal>
-
-      <EditModal
-        open={modalOpen === 'contact'}
-        onOpenChange={(o) => (o ? openEdit('contact') : closeEdit())}
-        title="Edit Contact Information"
-        description="Update your contact details"
-        onSave={saveContact}
-        isSaving={isSavingModal}
-      >
-        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-          <div className="space-y-2">
-            <Label htmlFor="modal_email">Email</Label>
-            <Input id="modal_email" type="email" {...contactForm.register('email')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modal_phone">Phone</Label>
-            <Input id="modal_phone" {...contactForm.register('phone')} />
-          </div>
-        </form>
-      </EditModal>
-
-      <EditModal
-        open={modalOpen === 'emergency'}
-        onOpenChange={(o) => (o ? openEdit('emergency') : closeEdit())}
-        title="Edit Emergency Contact"
-        description="Update your emergency contact information"
-        onSave={saveEmergency}
-        isSaving={isSavingModal}
-      >
-        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-          <div className="space-y-2">
-            <Label htmlFor="modal_em_name">Contact Name</Label>
-            <Input id="modal_em_name" {...emergencyForm.register('emergencyName')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modal_em_phone">Contact Phone</Label>
-            <Input id="modal_em_phone" {...emergencyForm.register('emergencyPhone')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modal_em_rel">Relationship</Label>
-            <Input id="modal_em_rel" {...emergencyForm.register('emergencyRelationship')} />
-          </div>
-        </form>
-      </EditModal>
-
-      {/* Job Modal */}
-      <EditModal
-        open={jobModalOpen}
-        onOpenChange={setJobModalOpen}
-        title="Edit Job Information"
-        description="Update job and payroll details"
-        onSave={saveJob}
-        isSaving={isSavingModal}
-      >
-        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-          <div className="space-y-2">
-            <Label htmlFor="modal_empid">Employee ID</Label>
-            <Input id="modal_empid" {...jobForm.register('employeeId')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modal_dept">Department</Label>
-            <Input id="modal_dept" {...jobForm.register('department')} />
-            {jobForm.formState.errors.department && (
-              <p className="text-sm text-red-600">{jobForm.formState.errors.department.message as string}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modal_desig">Designation</Label>
-            <Input id="modal_desig" {...jobForm.register('designation')} />
-            {jobForm.formState.errors.designation && (
-              <p className="text-sm text-red-600">{jobForm.formState.errors.designation.message as string}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modal_bank">Bank Account Type</Label>
-            <Input id="modal_bank" {...jobForm.register('bankAccountType')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="modal_salary">Salary</Label>
-            <Input id="modal_salary" type="number" step="1" {...jobForm.register('salary', { valueAsNumber: true })} />
-            {jobForm.formState.errors.salary && (
-              <p className="text-sm text-red-600">{jobForm.formState.errors.salary.message as string}</p>
-            )}
-          </div>
-        </form>
-      </EditModal>
-
-      {/* Skills Modal */}
-      <EditModal
-        open={skillsModalOpen}
-        onOpenChange={setSkillsModalOpen}
-        title="Edit Skills"
-        description="Enter comma-separated skills"
-        onSave={saveSkills}
-        isSaving={isSavingModal}
-      >
-        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-          <div className="space-y-2">
-            <Label htmlFor="modal_skills">Skills (comma separated)</Label>
-            <Input id="modal_skills" placeholder="Node, React" {...skillsForm.register('skills')} />
-          </div>
-        </form>
-      </EditModal>
+      <EditModalSection />
       {/* end modals */}
     </div>
   );
