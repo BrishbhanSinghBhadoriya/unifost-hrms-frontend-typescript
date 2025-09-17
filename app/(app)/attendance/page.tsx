@@ -490,7 +490,7 @@ export default function AttendancePage() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'view' | 'mark')}>
           <TabsList>
             <TabsTrigger value="view">View Attendance</TabsTrigger>
-            <TabsTrigger value="mark">Mark Attendance</TabsTrigger>
+           {userRole !== 'employee' && <TabsTrigger value="mark">Mark Attendance</TabsTrigger>}
           </TabsList>
         </Tabs>
 
@@ -511,18 +511,11 @@ export default function AttendancePage() {
               <Plus className="mr-2 h-4 w-4" /> Mark Individual
             </Button>
 
-            <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => {
-                setBulkDate(dayjs().format('YYYY-MM-DD'));
-                setBulkCheckIn('');
-                setBulkCheckOut('');
-                setSelectedBulk(new Set());
-                setBulkOpen(true);
-              }}
-            >
-              <Users className="mr-2 h-4 w-4" /> Mark Bulk Attendance
-            </Button>
+            <a href="/attendance/mark-bulk">
+              <Button className="bg-green-600 hover:bg-green-700 text-white">
+                <Users className="mr-2 h-4 w-4" /> Mark Bulk Attendance
+              </Button>
+            </a>
           </div>
         )}
       </div>
@@ -671,129 +664,7 @@ export default function AttendancePage() {
         </EditModal>
       )}
 
-      {/* Bulk Mark Dialog */}
-      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Mark Bulk Attendance</DialogTitle>
-            <DialogDescription>Select date and optional times, then apply to all employees not yet marked for that date.</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
-              <Input type="date" value={bulkDate} onChange={(e) => setBulkDate(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Check In (optional)</label>
-              <Input type="time" value={bulkCheckIn} onChange={(e) => setBulkCheckIn(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Check Out (optional)</label>
-              <Input type="time" value={bulkCheckOut} onChange={(e) => setBulkCheckOut(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as 'Present' | 'Absent')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Present">Present</SelectItem>
-                  <SelectItem value="Absent">Absent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Select Employees</label>
-                <div className="flex items-center gap-2 text-sm">
-                  <span>Select All</span>
-                  <Checkbox
-                    checked={selectAllBulk}
-                    onCheckedChange={(v) => {
-                      const flag = Boolean(v);
-                      setSelectAllBulk(flag);
-                      if (flag) setSelectedBulk(new Set(computedAllEmployeeIds));
-                      else setSelectedBulk(new Set());
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="max-h-64 overflow-auto rounded-md border p-2 space-y-2">
-                {employeesData?.map((emp: Employee) => {
-                  const id = String(emp.id || (emp as any)._id);
-                  const inputId = `bulk-emp-${id}`;
-                  const checked = selectedBulk.has(id);
-                  return (
-                    <div key={id} className="flex items-center gap-3 text-sm">
-                      <Checkbox
-                        id={inputId}
-                        checked={checked}
-                        onCheckedChange={(v) => {
-                          const shouldCheck = Boolean(v);
-                          const next = new Set(selectedBulk);
-                          if (shouldCheck) next.add(id); else next.delete(id);
-                          setSelectedBulk(next);
-                        }}
-                      />
-                      <label htmlFor={inputId} className="cursor-pointer select-none">
-                        {emp.name}
-                        {emp.designation ? ` - ${emp.designation}` : ''}
-                      </label>
-                    </div>
-                  );
-                })}
-                {!employeesData?.length && (
-                  <div className="text-sm text-muted-foreground">No employees found.</div>
-                )}
-              </div>
-              <div className="text-sm text-muted-foreground">{selectedBulk.size} employees selected</div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkOpen(false)}>Cancel</Button>
-            <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
-              disabled={bulkLoading || (!selectAllBulk && selectedBulk.size === 0)}
-              onClick={async () => {
-                if (!bulkDate) {
-                  toast.error('Please select a date');
-                  return;
-                }
-                try {
-                  setBulkLoading(true);
-                  const toIso = (date?: string, hhmm?: string) => {
-                    if (!date || !hhmm) return undefined as unknown as string;
-                    return dayjs(`${date} ${hhmm}`).toISOString();
-                  };
-                  const payload = {
-                    date: bulkDate,
-                    checkIn: bulkCheckIn ? toIso(bulkDate, bulkCheckIn) : undefined,
-                    checkOut: bulkCheckOut ? toIso(bulkDate, bulkCheckOut) : undefined,
-                    status: bulkStatus,
-                    selectAll: selectAllBulk,
-                    selectedEmployees: selectAllBulk ? [] : Array.from(selectedBulk),
-                  } as any;
-                  await api.post('/hr/bulkAttendance', payload);
-                  toast.success('Bulk attendance marked successfully');
-                  qc.invalidateQueries({ queryKey: ['attendance'] });
-                  setBulkOpen(false);
-                } catch (e) {
-                  toast.error('Bulk mark failed');
-                } finally {
-                  setBulkLoading(false);
-                }
-              }}
-            >
-              {bulkLoading ? 'Marking...' : 'Mark Attendance'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Bulk Mark moved to dedicated page */}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

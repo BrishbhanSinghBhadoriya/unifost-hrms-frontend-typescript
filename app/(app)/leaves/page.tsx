@@ -257,9 +257,11 @@ export default function LeavesPage() {
         <div>
           <div className='mb-5'>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'view' | 'mark')}>
-  <TabsList className="grid w-full grid-cols-2">
+  <TabsList  className={`grid w-full ${
+    userRole === "employee" ? "grid-cols-1" : "grid-cols-2"
+  }`}>
     <TabsTrigger value="view" className="w-full">Employee Leave</TabsTrigger>
-    <TabsTrigger value="mark" className="w-full">HR Leave</TabsTrigger>
+{userRole !== 'employee' && <TabsTrigger value="mark" className="w-full">HR Leave</TabsTrigger>}
   </TabsList>
 </Tabs>
 </div>
@@ -270,12 +272,12 @@ export default function LeavesPage() {
             {userRole === 'employee' ? 'Your leave requests' : 'Manage employee leave requests'}
           </p>
         </div>
-        {activeTab === 'mark' ? (
+        
           <Button onClick={() => router.push('/leaves/apply')}>
             <Plus className="mr-2 h-4 w-4" />
             Apply Leave
           </Button>
-        ) : null}
+         
       </div>
 
       <DataTable

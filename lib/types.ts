@@ -70,36 +70,95 @@ export interface LeaveRequest {
 export interface User {
   id: string;
   _id?: string;
+
+  // Authentication & Basic Info
   username: string;
-  email: string;
-  role: 'employee' | 'manager' | 'hr' | 'admin';
-  employeeId?: string;
+  password?: string; // usually not exposed in frontend but exists in backend
+  role: "employee" | "manager" | "hr" | "admin";
+
+  // Status Flags
+  isAdmin: boolean;
+  isManager: boolean;
+  isHR: boolean;
+  isEmployee: boolean;
+  isActive: boolean;
+
+  // Personal Information
   name: string;
-  avatarUrl?: string;
-  profilePicture?: string;
-  phone?: number;
   fatherName?: string;
-  isAdmin: boolean,
-  isManager:boolean,
-  isHR:boolean,
-  isEmployee:boolean,
-  isActive:boolean,
-  lastLogin?: string,
-  professionalEmailId:string,
-  emergencyContactNo:number
   bloodGroup?: string;
+  email: string;
+  phone: number;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
   dob?: string;
-  gender?: string;
-  country?: string;
-  address?: any;
-  department?: string;
-  designation?: string;
+  gender?: "male" | "female" | "other";
+  profilePicture?: string;
+  professionalEmailId?: string;
+  emergencyContactNo?: number;
+
+  // Employment Information
+  employeeId: string;
+  joiningDate?: string | null;
+  experience?: {
+    company: string;
+    designation: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    description?: string;
+  }[];
+
+  education?: {
+    degree: string;
+    institution?: string;
+    fieldOfStudy?: string;
+    startDate?: string;
+    endDate?: string;
+    grade?: string;
+  }[];
+
+  // Bank Information
+  bankDetails?: {
+    bankName: string;
+    bankAccountNumber: string;
+    bankAccountType: "savings" | "current";
+    bankIFSC: string;
+    bankAccountHolderName: string;
+  }[];
+
+  // Work Details
+  department: "IT" | "HR" | "Marketing" | "Sales" | "Other";
+  designation: string;
+  jobType?: "FULL TIME" | "INTERN" | "FREELANCE";
+  workMode?: string;
+  lastLogin?: string;
+
+  reportingTo?: string;
+
+  // Documents
+  documents?: {
+    adharImage?: string;
+    adharNumber?: string;
+    panImage?: string;
+    panNumber?: string;
+    experienceLetterImage?: string;
+    MarksheetImage_10?: string;
+    MarksheetImage_12?: string;
+    MarksheetImage_Graduation?: string;
+    MarksheetImage_PostGraduationImage?: string;
+  };
+
+  // Optional extra fields
   salary?: number;
-  bankAccountType?: string;
   skills?: string[];
-  experience?: any[];
-  education?: any[];
-  bankDetails?: any[];
+
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Department {
@@ -116,7 +175,6 @@ export interface Designation {
   department: string;
   level: number;
 }
-
 export interface LeaveBalance {
   employeeId: string;
   casual: { total: number; used: number; remaining: number };

@@ -9,7 +9,7 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   try {
     if (typeof window !== 'undefined') {
-      const token = Cookies.get('token') || localStorage.getItem('token');
+      const token = Cookies.get('token') ;
       if (token) {
         config.headers = config.headers || {};
         (config.headers as any)['Authorization'] = `Bearer ${token}`;

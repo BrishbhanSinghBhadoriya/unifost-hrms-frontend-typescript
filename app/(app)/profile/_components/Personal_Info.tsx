@@ -3,13 +3,48 @@ import { Card, CardContent, CardDescription, CardTitle, CardHeader } from '@/com
 import { Label } from '@/components/ui/label'
 import React from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { Pencil } from 'lucide-react'
+import EditIcon from '@mui/icons-material/Edit'
+import PersonIcon from '@mui/icons-material/Person'
+import EventIcon from '@mui/icons-material/Event'
+import EmailIcon from '@mui/icons-material/Email'
+import PhoneIcon from '@mui/icons-material/Phone'
+import LocationOnIcon from '@mui/icons-material/LocationOn'
+import PublicIcon from '@mui/icons-material/Public'
 
 const Personal_Info = () => {
   const { user } = useAuth();
 
   const get = (v: any, fallback: string = '-') => (v ?? v === 0 ? String(v) : fallback);
 console.log(user)
+
+  const Tile = ({
+    icon,
+    label,
+    value,
+    color,
+  }: { icon: React.ReactNode; label: string; value: string; color: string }) => (
+    <div className="rounded-xl border bg-background">
+      <div className="flex items-center justify-between p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: color }}>
+            {icon}
+          </div>
+          <div>
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <div className="text-base font-medium">{value || '-'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const addressText = typeof user?.address === 'object'
+    ? [
+        (user as any)?.address?.street,
+        (user as any)?.address?.city,
+        (user as any)?.address?.state,
+      ].filter(Boolean).join(' ')
+    : get(user?.address);
 
   return (
     <div>
@@ -20,62 +55,63 @@ console.log(user)
             <CardDescription>Personal and contact details</CardDescription>
           </div>
           <Button size="icon" variant="ghost" onClick={() => window.dispatchEvent(new CustomEvent('open-edit-modal', { detail: 'personal' }))}>
-            <Pencil className="h-4 w-4" />
+            <EditIcon sx={{ fontSize: 16 }} />
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <Label>Name</Label>
-              <p className="text-sm text-muted-foreground">{get(user?.name)}</p>
-            </div>
-            <div className="space-y-1">
-              <Label>Father's Name</Label>
-              <p className="text-sm text-muted-foreground">{get(user?.fatherName)}</p>
-            </div>
-            <div className="space-y-1">
-              <Label>Date of Birth</Label>
-              <p className="text-sm text-muted-foreground">{get((user as any)?.dob || (user as any)?.dateOfBirth)}</p>
-            </div>
-            <div className="space-y-1">
-              <Label>Blood Group</Label>
-              <p className="text-sm text-muted-foreground">{get((user as any)?.bloodGroup || (user as any)?.bloodGroup)}</p>
-            </div>
-
-            <div className="space-y-1">
-              <Label>Email</Label>
-              <p className="text-sm text-muted-foreground">{get(user?.email)}</p>
-            </div>
-            <div className="space-y-1">
-              <Label>Phone</Label>
-              <p className="text-sm text-muted-foreground">{get(user?.phone)}</p>
-            </div>
-
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Tile
+              icon={<PersonIcon sx={{ fontSize: 18, color: '#7c3aed' }} />}
+              label="Name"
+              value={get(user?.name)}
+              color="#ede9fe"
+            />
+            <Tile
+              icon={<EventIcon sx={{ fontSize: 18, color: '#2563eb' }} />}
+              label="Date of Birth"
+              value={get((user as any)?.dob || (user as any)?.dateOfBirth)}
+              color="#dbeafe"
+            />
+            <Tile
+              icon={<EmailIcon sx={{ fontSize: 18, color: '#16a34a' }} />}
+              label="Email"
+              value={get(user?.email)}
+              color="#dcfce7"
+            />
+            <Tile
+              icon={<PhoneIcon sx={{ fontSize: 18, color: '#fb923c' }} />}
+              label="Phone"
+              value={get(user?.phone)}
+              color="#ffedd5"
+            />
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Address</Label>
-                <Button size="sm" variant="ghost" onClick={() => window.dispatchEvent(new CustomEvent('open-edit-modal', { detail: 'address' }))}>            <Pencil className="h-4 w-4" />
+                <Button size="sm" variant="ghost" onClick={() => window.dispatchEvent(new CustomEvent('open-edit-modal', { detail: 'address' }))}>
+                  <EditIcon sx={{ fontSize: 16 }} />
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {typeof user?.address === 'object'
-                  ? [
-                      (user as any)?.address?.street,
-                      (user as any)?.address?.city,
-                      (user as any)?.address?.state
-                    ].filter(Boolean).join(' ')
-                  : get(user?.address)}
-              </p>
+              <div className="rounded-xl border bg-background p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: '#fee2e2' }}>
+                    <LocationOnIcon sx={{ fontSize: 18, color: '#ef4444' }} />
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Address</div>
+                    <div className="text-base font-medium">{addressText || '-'}</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>State - Country</Label>
-              <p className="text-sm text-muted-foreground">
-                {[
-                  (user as any)?.address?.state || user?.country,
-                  (user as any)?.address?.country || user?.country || 'India'
-                ].filter(Boolean).join(' - ')}
-              </p>
-            </div>
+            <Tile
+              icon={<PublicIcon sx={{ fontSize: 18, color: '#4f46e5' }} />}
+              label="State - Country"
+              value={[
+                (user as any)?.address?.state,
+                (user as any)?.address?.country || 'India',
+              ].filter(Boolean).join(' - ')}
+              color="#e0e7ff"
+            />
           </div>
         </CardContent>
       </Card>

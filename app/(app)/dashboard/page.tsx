@@ -3,9 +3,10 @@
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { StatCard } from '@/components/ui/stat-card';
+import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CardSkeleton } from '@/components/ui/loading-skeleton';
 import { useRouter } from 'next/navigation';
 import {
   Users,
@@ -16,74 +17,52 @@ import {
   Wallet,
   Megaphone,
   PieChart,
+  Search,
+  BarChart3,
+  Gift,
+  Award,
+  Bell,
+  Eye,
 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState,  useMemo } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
-import api from '@/lib/api';
-import { toast } from 'sonner';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { useQuery } from '@tanstack/react-query';
+import getDashboardData from '@/components/functions/getDashboardData';
+import { getUpcommingLeaves } from '@/components/functions/getUpcommingLeaves';
 dayjs.extend(relativeTime);
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const userRole = user?.role;
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [myLeaves, setMyLeaves] = useState<any[]>([]);
 
-  const stats = useMemo(() => {
-    const pendingLeaves = myLeaves.filter(l => l.status === 'pending').length;
-    const approvedLeaves = myLeaves.filter(l => l.status === 'approved').length;
-    const daysTaken = myLeaves
-      .filter(l => l.status === 'approved')
-      .reduce((sum, l) => sum + (l.totalDays || l.days || 0), 0);
-    return { pendingLeaves, approvedLeaves, daysTaken };
-  }, [myLeaves]);
+  // const stats = useMemo(() => {
+  //   const totalEmployees = myLeaves.length;
+  //   const pendingLeaves = myLeaves.filter(l => l.status === 'pending').length;
+  //   const approvedLeaves = myLeaves.filter(l => l.status === 'approved').length;
+  //   const daysTaken = myLeaves
+  //     .filter(l => l.status === 'approved')
+  //     .reduce((sum, l) => sum + (l.totalDays || l.days || 0), 0);
+  //   return { totalEmployees, pendingLeaves, approvedLeaves, daysTaken };
+  // }, [myLeaves]);
 
-  const upcomingLeave = useMemo(() => {
-    const future = myLeaves
-      .filter(l => dayjs(l.startDate).isAfter(dayjs(), 'day'))
-      .sort((a, b) => dayjs(a.startDate).valueOf() - dayjs(b.startDate).valueOf());
-    return future[0];
-  }, [myLeaves]);
-
-  useEffect(() => {
-    fetchEmployeeData();
-  }, []);
-
-  const fetchEmployeeData = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('leaves/me');
-      const body: any = res.data;
-      const leaves = Array.isArray(body?.leaves) ? body.leaves : (Array.isArray(body) ? body : []);
-      setMyLeaves(leaves);
-    } catch (error) {
-      toast.error('Failed to load your dashboard');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Welcome back, {user?.name || 'User'}!
-            </p>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  
+  const {data: dashboardData, isLoading: isDashboardLoading} = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: () => getDashboardData(),
+  });
+  const {data:upcomingLeave,isLoading:isupcomingLeave}=useQuery({
+   queryKey:['upcommingLeaves'],
+   queryFn:()=>getUpcommingLeaves()
+  })
+  const stats = dashboardData?.stats || {} as any;
+  const attendance = dashboardData?.attendanceReport || {} as any;
+  const birthday=dashboardData?.birthdays || [] as any;
+  console.log(upcomingLeave);
 
   return (
     <div className="space-y-8">
@@ -98,7 +77,7 @@ export default function DashboardPage() {
             ].map((src, idx) => (
               <CarouselItem key={idx}>
                 <div className="relative h-40 sm:h-56 md:h-64 lg:h-72 w-full">
-                  <img src={src} alt={`slide-${idx+1}`} className="h-full w-full object-cover" />
+                  <img src={src} alt={`slide-${idx + 1}`} className="h-full w-full object-cover" />
                 </div>
               </CarouselItem>
             ))}
@@ -132,155 +111,121 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Leaves</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingLeaves}</div>
-            <p className="text-xs text-muted-foreground">Awaiting approval</p>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approved Leaves</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.approvedLeaves}</div>
-            <p className="text-xs text-muted-foreground">This year</p>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Days Taken</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.daysTaken}</div>
-            <p className="text-xs text-muted-foreground">Total approved days</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Upcoming leave + Quick actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70">
-          <CardHeader>
-            <CardTitle>Upcoming Leave</CardTitle>
-            <CardDescription>Your next scheduled leave</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {upcomingLeave ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-muted-foreground capitalize">{upcomingLeave.leaveType}</div>
-                  <div className="text-xl font-semibold">
-                    {dayjs(upcomingLeave.startDate).format('MMM DD, YYYY')} → {dayjs(upcomingLeave.endDate).format('MMM DD, YYYY')}
-                  </div>
-                  <div className="text-sm text-muted-foreground">{upcomingLeave.totalDays} days • {upcomingLeave.status}</div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {userRole === 'hr' ? (
+          <>
+            <StatCard title="Total Employees" value={stats.totalEmployees || 0} icon={Users} description="All active employees" accentClassName="bg-blue-100 text-blue-600" />
+            <StatCard title="New Joinees" value={stats.newJoiners || 0} icon={Users} description="This month / quarter" accentClassName="bg-green-100 text-green-600" />
+            <StatCard title="Pending Leaves" value={stats.pendingLeaves || 0} icon={FileText} description="Awaiting approval" accentClassName="bg-amber-100 text-amber-600" />
+            <Card className="rounded-2xl md:col-span-4">
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Today's Attendance</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Present</p><p className="text-lg font-semibold">{attendance.present ?? '—'}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Absent</p><p className="text-lg font-semibold">{attendance.absent ?? '—'}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Late</p><p className="text-lg font-semibold">{attendance.late ?? '—'}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">On Leave</p><p className="text-lg font-semibold">{(attendance.onLeave ?? 0) as any}</p></div>
                 </div>
-                <Badge variant="secondary">{dayjs(upcomingLeave.startDate).fromNow()}</Badge>
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">No upcoming leave scheduled.</div>
-            )}
-          </CardContent>
-        </Card>
+                <p className="mt-2 text-xs text-muted-foreground">{dayjs(Date.now()).format('DD/MM/YYYY')}</p>
+              </CardContent>
+            </Card>
 
-        <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common tasks and shortcuts</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/attendance')}>
-              <Clock className="mr-2 h-4 w-4" /> View Attendance
-            </Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/leaves/apply')}>
-              <FileText className="mr-2 h-4 w-4" /> Apply Leave
-            </Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/leaves')}>
-              <FileText className="mr-2 h-4 w-4" /> View My Leaves
-            </Button>
-          </CardContent>
-        </Card>
+            {/* Upcoming Leaves Table */}
+            <Card className="rounded-2xl md:col-span-4">
+              <CardHeader>
+                <CardTitle>Upcoming Leaves</CardTitle>
+                <CardDescription>Approved and scheduled leaves</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DataTable
+                  data={(upcomingLeave?.upcomingLeaves || []) as any[]}
+                  columns={[
+                    { key: 'employeeName', label: 'Employee', sortable: true },
+                    { key: 'leaveType', label: 'Type', sortable: true },
+                    { key: 'totalDays', label: 'Days', sortable: true, sortType: 'number' },
+                    { key: 'startDate', label: 'Start', sortable: true, sortType: 'date', render: (v) => dayjs(v).format('DD MMM YYYY') },
+                    { key: 'endDate', label: 'End', sortable: true, sortType: 'date', render: (v) => dayjs(v).format('DD MMM YYYY') },
+                    { key: 'status', label: 'Status', sortable: true, render: (v) => <Badge
+                      variant="secondary"
+                      className={`capitalize ${
+                        String(v).toLowerCase() === "approved"
+                          ? "bg-green-500 text-white"
+                          : "bg-red-500 text-white"
+                      }`}
+                    >
+                      {String(v || "").toLowerCase()}
+                    </Badge>
+                     },
+                  ]}
+                  searchPlaceholder="Search leaves..."
+                  initialPageSize={5}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl md:col-span-4">
+              <CardHeader>
+                <CardTitle>Birthdays</CardTitle>
+                <CardDescription>Employees with birthdays</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DataTable
+                  data={birthday as any[]}
+                  columns={[
+                    { key: 'name', label: 'Name', sortable: true },
+                    { key: 'employeeId', label: 'Emp ID', sortable: true },
+                    { key: 'department', label: 'Department', sortable: true },
+                    { key: 'designation', label: 'Designation', sortable: true },
+                    { key: 'dob', label: 'DOB', sortable: true, sortType: 'date', render: (v) => v ? dayjs(v).format('DD MMM YYYY') : '—' },
+                    { key: 'email', label: 'Email', sortable: true },
+                  
+                  ]}
+                  actions={(row: any) => (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="View profile"
+                      onClick={() => router.push(`/employees/${row._id || row.id || row.employeeId}`)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  )}
+                  searchPlaceholder="Search birthdays..."
+                  initialPageSize={5}
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <StatCard title="My Pending Leaves" value={stats.pendingLeaves} icon={FileText} description="Awaiting HR approval" />
+            <StatCard title="My Approved Leaves" value={stats.approvedLeaves} icon={Activity} description="This year" />
+          </>
+        )}
       </div>
+    
+      {userRole === 'hr' && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold">Employee Management</h2>
+
+          
+          
+
+          {/* Engagement & Announcements */}
+                    
+        </div>
+      )}
 
       {/* Employee Portal Sections */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Profile & Attendance */}
-        <div className="space-y-6 xl:col-span-2">
-          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" /> Employee Profile
-                </CardTitle>
-                <CardDescription>Quick view of your information</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => router.push('/profile')}>View Profile</Button>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Name</p>
-                  <p className="font-medium">{user?.name}</p>
-                  <p className="text-sm text-muted-foreground">Designation</p>
-                  <p className="font-medium">{user?.designation || '—'}</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Department</p>
-                  <p className="font-medium">{user?.department || '—'}</p>
-                  <p className="text-sm text-muted-foreground">Employee ID</p>
-                  <p className="font-medium">{user?.employeeId || '—'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <PieChart className="h-4 w-4 text-muted-foreground" /> Attendance
-                </CardTitle>
-                <CardDescription>Your current attendance summary</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => router.push('/attendance')}>View Attendance</Button>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="rounded-xl bg-gradient-to-br from-secondary to-card p-4 shadow-sm">
-                  <p className="text-xs text-muted-foreground">This Month</p>
-                  <p className="text-xl font-semibold">—</p>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-secondary to-card p-4 shadow-sm">
-                  <p className="text-xs text-muted-foreground">Present</p>
-                  <p className="text-xl font-semibold">—</p>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-secondary to-card p-4 shadow-sm">
-                  <p className="text-xs text-muted-foreground">Absent</p>
-                  <p className="text-xl font-semibold">—</p>
-                </div>
-                <div className="rounded-xl bg-gradient-to-br from-secondary to-card p-4 shadow-sm">
-                  <p className="text-xs text-muted-foreground">Late</p>
-                  <p className="text-xl font-semibold">—</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        
 
         {/* Payroll & Announcements */}
-        <div className="space-y-6">
-          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70">
+        <div className="grid grid-cols-1 gap-6 w-full xl:col-span-3">
+          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70 w-full lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
-              <div>
+              <div >
                 <CardTitle className="flex items-center gap-2">
                   <Wallet className="h-4 w-4 text-muted-foreground" /> Payroll
                 </CardTitle>
@@ -306,23 +251,7 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Megaphone className="h-4 w-4 text-muted-foreground" /> Announcements
-              </CardTitle>
-              <CardDescription>Stay up to date</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="rounded-xl border p-3 bg-gradient-to-br from-secondary to-card">
-                  <p className="text-sm font-medium">No announcements</p>
-                  <p className="text-xs text-muted-foreground">Company updates will appear here.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          
         </div>
       </div>
     </div>

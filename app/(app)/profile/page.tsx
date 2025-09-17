@@ -3,20 +3,14 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { authService } from '@/lib/auth';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { EditModal } from '@/components/ui/edit-modal';
 import { EditModalSection } from './_components/EditModal';
 
-import { User, Mail, Phone, MapPin, Users, Lock, Camera, Loader2 } from 'lucide-react';
+import { Mail, Phone, Camera, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Personal_Info from './_components/Personal_Info';
 import Contact_Info from './_components/Contact_Info';
@@ -24,206 +18,19 @@ import JobTab from './_components/JobTab';
 import ExperienceTab from './_components/ExperienceTab';
 import EductionTab from './_components/EductionTab';
 import BankdetailsTab from './_components/BankdetailsTab';
+import DocumentTab from './_components/DocumentTab';
 
-const personalInfoSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  fatherName:z.string().min(4,'Name must be at least 4 characters'),
-  dob: z.string().optional(),
-  bloodGroup:z.string().optional(),
-  address: z.string().optional(),
-  gender: z.string().optional(),
-  country: z.string().optional(),
-});
-
-const contactInfoSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(10, 'Phone must be at least 10 characters'),
-});
-
-const emergencyContactSchema = z.object({
-  emergencyName: z.string().min(2, 'Name is required'),
-  emergencyPhone: z.string().min(10, 'Phone is required'),
-  emergencyRelationship: z.string().min(1, 'Relationship is required'),
-});
-
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string().min(1, 'Confirm password is required'),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-const jobInfoSchema = z.object({
-  employeeId: z.string().optional(),
-  department: z.string().min(1, 'Department is required'),
-  designation: z.string().min(1, 'Designation is required'),
-  bankAccountType: z.string().optional(),
-  salary: z.coerce.number().min(0, 'Salary must be positive').optional(),
-});
-
-const skillsSchema = z.object({
-  skills: z.string().optional(), // comma-separated
-});
-
-const experienceSchema = z.object({
-  company: z.string().min(1, 'Company is required'),
-  designation: z.string().min(1, 'Designation is required'),
-  startDate: z.string().min(1, 'Start date is required'),
-  endDate: z.string().optional(),
-  description: z.string().optional(),
-});
-
-const educationSchema = z.object({
-  degree: z.string().min(1, 'Degree is required'),
-  institution: z.string().optional(),
-  fieldOfStudy: z.string().optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  grade: z.string().optional(),
-});
-
-const bankSchema = z.object({
-  bankName: z.string().min(1, 'Bank name is required'),
-  bankAccountNumber: z.string().min(1, 'Account number is required'),
-  bankAccountType: z.enum(['savings', 'current']).default('savings'),
-  bankIFSC: z.string().min(1, 'IFSC is required'),
-  bankAccountHolderName: z.string().min(1, 'Account holder name is required'),
-});
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [modalOpen, setModalOpen] = useState<null | 'contact' | 'emergency' | 'password'>(null);
-  const [jobModalOpen, setJobModalOpen] = useState(false);
-  const [skillsModalOpen, setSkillsModalOpen] = useState(false);
-  const [isSavingModal, setIsSavingModal] = useState(false);
-  const [expModalOpen, setExpModalOpen] = useState(false);
-  const [eduModalOpen, setEduModalOpen] = useState(false);
-  const [bankModalOpen, setBankModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const toYMD = (d?: string) => {
-    if (!d) return '';
-    const date = new Date(d);
-    if (isNaN(date.getTime())) return '';
-    const m = `${date.getMonth() + 1}`.padStart(2, '0');
-    const day = `${date.getDate()}`.padStart(2, '0');
-    return `${date.getFullYear()}-${m}-${day}`;
-  };
-
+  
   console.log(user)
-  const personalForm = useForm({
-    resolver: zodResolver(personalInfoSchema),
-    defaultValues: {
-      name: user?.name || '',
-      fatherName:(user as any)?.fatherName || '',
 
-      dob: toYMD(user?.dob), 
-      bloodGroup:(user as any)?.bloodGroup || '',
-     address: user?.address || '',
-     gender: user?.gender || '',
-     country: user?.country || 'India',
-    },
-  });
-
-  const contactForm = useForm({
-    resolver: zodResolver(contactInfoSchema),
-    defaultValues: {
-      email: user?.email || '',
-      phone: user?.phone || '',
-    },
-  });
-
-  const emergencyForm = useForm({
-    resolver: zodResolver(emergencyContactSchema),
-    defaultValues: {
-      emergencyName: '', // Not available in current user data
-      emergencyPhone: '', // Not available in current user data
-      emergencyRelationship: '', // Not available in current user data
-    },
-  });
-
-  const passwordForm = useForm({
-    resolver: zodResolver(passwordSchema),
-    defaultValues: {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    },
-  });
-
-  const jobForm = useForm({
-    resolver: zodResolver(jobInfoSchema),
-    defaultValues: {
-      employeeId: user?.employeeId || '',
-      department: user?.department || '',
-      designation: user?.designation || '',
-      bankAccountType: user?.bankAccountType || '',
-      salary: user?.salary ?? undefined,
-    },
-  });
-
-  const skillsForm = useForm({
-    resolver: zodResolver(skillsSchema),
-    defaultValues: {
-      skills: Array.isArray(user?.skills) ? user?.skills?.join(', ') : '',
-    },
-  });
-
-  const experienceForm = useForm({
-    resolver: zodResolver(experienceSchema),
-    defaultValues: {
-      company: '',
-      designation: '',
-      startDate: '',
-      endDate: '',
-      description: '',
-    },
-  });
-
-  const educationForm = useForm({
-    resolver: zodResolver(educationSchema),
-    defaultValues: {
-      degree: '',
-      institution: '',
-      fieldOfStudy: '',
-      startDate: '',
-      endDate: '',
-      grade: '',
-    },
-  });
-
-  const bankForm = useForm({
-    resolver: zodResolver(bankSchema),
-    defaultValues: {
-      bankName: '',
-      bankAccountNumber: '',
-      bankAccountType: 'savings',
-      bankIFSC: '',
-      bankAccountHolderName: '',
-    },
-  });
-
-  // const handlePersonalInfoSubmit = (data: any) => {
-  //   toast.success('Personal information updated successfully');
-  // };
-
-  // const handleContactSubmit = (data: any) => {
-  //   toast.success('Contact information updated successfully');
-  // };
-
-  // const handleEmergencyContactSubmit = (data: any) => {
-  //   toast.success('Emergency contact updated successfully');
-  // };
-
-  // const handlePasswordSubmit = (data: any) => {
-  //   toast.success('Password changed successfully');
-  //   passwordForm.reset();
-  // };
-
+  
   const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -261,7 +68,6 @@ export default function ProfilePage() {
   };
 
   // const openEdit = (key: 'contact' | 'emergency' | 'password') => setModalOpen(key);
-  const closeEdit = () => setModalOpen(null);
 
 
   if (!user) {
@@ -290,7 +96,7 @@ export default function ProfilePage() {
               <Avatar className="h-24 w-24">
                 <AvatarImage src={(user.profilePicture ? `${user.profilePicture}?cb=${Date.now()}` : '')} alt={user.name} />
                 <AvatarFallback className="text-2xl">
-                  {user.name.split(' ').map(n => n[0]).join('')}
+                  {user.name.split(' ').map((n: string) => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               <Button
@@ -375,6 +181,10 @@ export default function ProfilePage() {
         </TabsContent>
         <TabsContent value="bank" className="space-y-4">
           <BankdetailsTab/>
+        </TabsContent>
+
+        <TabsContent value="document" className="space-y-4">
+          <DocumentTab/>
         </TabsContent>
 
       </Tabs>
