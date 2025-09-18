@@ -15,13 +15,7 @@ import {
   Clock,
   Activity,
   Wallet,
-  Megaphone,
-  PieChart,
-  Search,
-  BarChart3,
-  Gift,
-  Award,
-  Bell,
+  
   Eye,
 } from 'lucide-react';
 import { useState,  useMemo } from 'react';
@@ -29,16 +23,18 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { useQuery } from '@tanstack/react-query';
-import getDashboardData from '@/components/functions/getDashboardData';
+import getDashboardData,{getEmployeesDashboardata} from '@/components/functions/getDashboardData';
 import { getUpcommingLeaves } from '@/components/functions/getUpcommingLeaves';
+import { fetchAllEmployees } from '@/components/functions/Employee';
+import getLeaves from '@/components/functions/getLeaves';
+import { Calendar as MiniCalendar } from '@/components/ui/calendar';
+import { generateIndianHolidays } from '@/lib/indian-holidays';
 dayjs.extend(relativeTime);
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const userRole = user?.role;
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [myLeaves, setMyLeaves] = useState<any[]>([]);
 
   // const stats = useMemo(() => {
   //   const totalEmployees = myLeaves.length;
@@ -54,7 +50,14 @@ export default function DashboardPage() {
   const {data: dashboardData, isLoading: isDashboardLoading} = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => getDashboardData(),
+    enabled: userRole === 'hr',
   });
+  const {data: empdashboardData, isLoading: isEmpDashboardLoading} = useQuery({
+    queryKey: ['employee-dashboard'],
+    queryFn: () => getEmployeesDashboardata(),
+    enabled: userRole !== 'hr',
+  })
+  console.log(empdashboardData);
   const {data:upcomingLeave,isLoading:isupcomingLeave}=useQuery({
    queryKey:['upcommingLeaves'],
    queryFn:()=>getUpcommingLeaves()
@@ -63,6 +66,50 @@ export default function DashboardPage() {
   const attendance = dashboardData?.attendanceReport || {} as any;
   const birthday=dashboardData?.birthdays || [] as any;
   console.log(upcomingLeave);
+
+  const { data: allEmployees, isLoading: isEmployeesLoading } = useQuery({
+    queryKey: ['employees', 'all'],
+    queryFn: () => fetchAllEmployees(),
+  });
+
+  // Employee-specific leaves
+  const { data: myLeavesData } = useQuery({
+    queryKey: ['myLeaves'],
+    queryFn: () => getLeaves('employee'),
+    enabled: userRole === 'employee',
+  });
+
+  const employeeStats = useMemo(() => {
+    const leaves = Array.isArray(myLeavesData) ? myLeavesData : [] as any[];
+    const pendingLeaves = leaves.filter(l => String(l.status).toLowerCase() === 'pending').length;
+    const approvedLeaves = leaves.filter(l => String(l.status).toLowerCase() === 'approved').length;
+    const daysTaken = leaves
+      .filter(l => String(l.status).toLowerCase() === 'approved')
+      .reduce((sum, l) => sum + (Number(l.totalDays ?? l.days ?? 0) || 0), 0);
+    return { pendingLeaves, approvedLeaves, daysTaken };
+  }, [myLeavesData]);
+
+  // Dynamic greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 5) return 'Good night';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    if (hour < 21) return 'Good evening';
+    return 'Good night';
+  }, []);
+
+  // Monthly attendance coloring (present/absent)
+  const { presentDates, absentDates } = useMemo(() => {
+    const monthly = (empdashboardData?.data?.monthly?.attendance || empdashboardData?.data?.attendance || []) as any[];
+    const present = monthly
+      .filter((a) => String(a.status).toLowerCase() === 'present')
+      .map((a) => new Date(a.date));
+    const absent = monthly
+      .filter((a) => String(a.status).toLowerCase() === 'absent')
+      .map((a) => new Date(a.date));
+    return { presentDates: present, absentDates: absent };
+  }, [empdashboardData]);
 
   return (
     <div className="space-y-8">
@@ -91,11 +138,12 @@ export default function DashboardPage() {
             <AvatarFallback>{user?.name?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Hi, {user?.name?.split(' ')[0] || 'there'} 👋</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{greeting}, {user?.name?.split(' ')[0] || 'there'} 👋</h1>
             <p className="text-sm text-muted-foreground">
               {user?.designation || 'Employee'} • {user?.department}
             </p>
           </div>
+          <div className=''>Last login: {user?.lastLogin ? dayjs(user.lastLogin).format('DD MMM YYYY, hh:mm A') : '—'}</div>
           <div className="hidden sm:flex gap-2">
             <Button variant="outline" onClick={() => router.push('/attendance')}>
               <Clock className="mr-2 h-4 w-4" /> Attendance
@@ -132,20 +180,61 @@ export default function DashboardPage() {
 
             {/* Upcoming Leaves Table */}
             <Card className="rounded-2xl md:col-span-4">
-              <CardHeader>
+  <CardHeader className="flex flex-row items-center justify-between">
+    <div>
                 <CardTitle>Upcoming Leaves</CardTitle>
                 <CardDescription>Approved and scheduled leaves</CardDescription>
+    </div>
+    <button
+      className="px-4 py-2 text-sm font-medium rounded-xl 
+                 bg-gradient-to-r from-blue-500 to-indigo-500 
+                 text-white shadow-md hover:shadow-lg 
+                 hover:scale-105 transition-all duration-300"
+    >
+      See all
+    </button>
               </CardHeader>
+
               <CardContent>
                 <DataTable
                   data={(upcomingLeave?.upcomingLeaves || []) as any[]}
                   columns={[
+        {
+          key: 'profilePicture',
+          label: 'Photo',
+          sortable: false,
+          render: (_: any, row: any) => (
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={row.profilePicture || row.employeeProfilePicture} />
+              <AvatarFallback>
+                {row.employeeName?.split(' ').map((n: string) => n[0]).join('')}
+              </AvatarFallback>
+            </Avatar>
+          ),
+        },
                     { key: 'employeeName', label: 'Employee', sortable: true },
                     { key: 'leaveType', label: 'Type', sortable: true },
                     { key: 'totalDays', label: 'Days', sortable: true, sortType: 'number' },
-                    { key: 'startDate', label: 'Start', sortable: true, sortType: 'date', render: (v) => dayjs(v).format('DD MMM YYYY') },
-                    { key: 'endDate', label: 'End', sortable: true, sortType: 'date', render: (v) => dayjs(v).format('DD MMM YYYY') },
-                    { key: 'status', label: 'Status', sortable: true, render: (v) => <Badge
+        {
+          key: 'startDate',
+          label: 'Start',
+          sortable: true,
+          sortType: 'date',
+          render: (v) => dayjs(v).format('DD MMM YYYY'),
+        },
+        {
+          key: 'endDate',
+          label: 'End',
+          sortable: true,
+          sortType: 'date',
+          render: (v) => dayjs(v).format('DD MMM YYYY'),
+        },
+        {
+          key: 'status',
+          label: 'Status',
+          sortable: true,
+          render: (v) => (
+            <Badge
                       variant="secondary"
                       className={`capitalize ${
                         String(v).toLowerCase() === "approved"
@@ -155,6 +244,7 @@ export default function DashboardPage() {
                     >
                       {String(v || "").toLowerCase()}
                     </Badge>
+          ),
                      },
                   ]}
                   searchPlaceholder="Search leaves..."
@@ -172,6 +262,14 @@ export default function DashboardPage() {
                 <DataTable
                   data={birthday as any[]}
                   columns={[
+                    { key: 'profilePicture', label: 'Photo', sortable: false, render: (_, row) => (
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={row.profilePicture} />
+                        <AvatarFallback>
+                          {row.name?.split(' ').map((n: string) => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                    )},
                     { key: 'name', label: 'Name', sortable: true },
                     { key: 'employeeId', label: 'Emp ID', sortable: true },
                     { key: 'department', label: 'Department', sortable: true },
@@ -198,8 +296,111 @@ export default function DashboardPage() {
           </>
         ) : (
           <>
-            <StatCard title="My Pending Leaves" value={stats.pendingLeaves} icon={FileText} description="Awaiting HR approval" />
-            <StatCard title="My Approved Leaves" value={stats.approvedLeaves} icon={Activity} description="This year" />
+          <StatCard
+            title="Working Days This Month"
+            value={empdashboardData?.data?.monthly?.totalWorkingDays ?? 0}
+            icon={Calendar}
+            description={`Present: ${empdashboardData?.data?.monthly?.presentDays ?? 0} • Absent: ${empdashboardData?.data?.monthly?.absentDays ?? 0}`}
+          />
+            <StatCard title="My Pending Leaves" value={employeeStats.pendingLeaves} icon={FileText} description="Awaiting HR approval" />
+            <StatCard title="My Approved Leaves" value={employeeStats.approvedLeaves} icon={Activity} description="This year" />
+            <StatCard title="Days Taken" value={employeeStats.daysTaken} icon={Calendar} description="Approved leave days" />
+            
+            {/* Daily Attendance (employee) */}
+            <Card className="rounded-2xl md:col-span-4">
+  <CardHeader>
+    <CardTitle>Daily Attendance</CardTitle>
+    <CardDescription>
+      Check-in / Check-out for today • {dayjs().format("dddd, DD MMM YYYY")}
+    </CardDescription>
+  </CardHeader>
+  <CardContent>
+    <div className="text-sm">
+      {empdashboardData?.data ? (
+        empdashboardData?.data?.today.status === "present" ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
+              <span>Present</span>
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Check-in: {empdashboardData?.data?.today?.checkIn || "--"}</span>
+              <span>Check-out: {empdashboardData?.data?.today?.checkOut || "--"}</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Hours Worked: {empdashboardData?.data?.today.hoursWorked ?? 0}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-2 w-2 rounded-full bg-red-500" />
+            <span>Absent (No check-in)</span>
+          </div>
+        )
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-2 w-2 rounded-full bg-gray-400" />
+          <span>No data available</span>
+        </div>
+      )}
+    </div>
+  </CardContent>
+</Card>
+
+            {/* Announcements / Notices */}
+            <Card className="rounded-2xl md:col-span-4">
+              <CardHeader>
+                <CardTitle>Announcements / Notices</CardTitle>
+                <CardDescription>HR announcements, company events, holidays</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <p className="font-medium">HR Announcements</p>
+                    <p className="text-muted-foreground">No announcements.</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Upcoming Leaves</p>
+                    <p className="text-muted-foreground">{(upcomingLeave?.upcomingLeaves?.length || 0)} scheduled leaves</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            {/* Monthly Attendance & Leave Balance */}
+            <div className="md:col-span-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card className="col-span-1">
+                <CardHeader>
+                  <CardTitle>Monthly Attendance</CardTitle>
+                  <CardDescription>{dayjs().format('MMMM YYYY')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <MiniCalendar
+                    mode="single"
+                    modifiers={{ present: presentDates, absent: absentDates }}
+                    modifiersClassNames={{
+                      present: 'bg-green-500 text-white hover:bg-green-600',
+                      absent: 'bg-red-500 text-white hover:bg-red-600',
+                    }}
+                    className="rounded-md border w-full"
+                  />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Leave Balance</CardTitle>
+                  <CardDescription>Casual, Sick, Earned</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between"><span>Casual</span><span className="font-medium">—</span></div>
+                    <div className="flex items-center justify-between"><span>Sick</span><span className="font-medium">—</span></div>
+                    <div className="flex items-center justify-between"><span>Earned</span><span className="font-medium">—</span></div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            
           </>
         )}
       </div>
@@ -225,33 +426,49 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-6 w-full xl:col-span-3">
           <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70 w-full lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
-              <div >
+              <div>
                 <CardTitle className="flex items-center gap-2">
                   <Wallet className="h-4 w-4 text-muted-foreground" /> Payroll
                 </CardTitle>
-                <CardDescription>Latest salary and payslips</CardDescription>
+                <CardDescription>Salaries overview for all employees</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={() => router.push('/profile')}>
-                Manage Bank Details
+              <Button variant="outline" size="sm" onClick={() => router.push('/employees')}>
+                See all employees
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Last Paid</span>
-                  <span className="font-medium">—</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Amount</span>
-                  <span className="font-medium">—</span>
-                </div>
-                <Button variant="outline" className="w-full mt-2">
-                  Download Latest Payslip
+              <DataTable
+                data={(allEmployees || []) as any[]}
+                columns={[
+                  { key: 'profilePicture', label: 'Photo', sortable: false, render: (_: any, row: any) => (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={row.profilePicture} />
+                      <AvatarFallback>
+                        {(row.name || row.employeeName || '')?.split(' ').map((n: string) => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                  )},
+                  { key: 'name', label: 'Name', sortable: true, render: (_: any, row: any) => row.name || row.employeeName },
+                  { key: 'employeeId', label: 'Emp ID', sortable: true, render: (_: any, row: any) => row.employeeId || row.empCode || row._id || row.id },
+                  { key: 'department', label: 'Department', sortable: true },
+                  { key: 'designation', label: 'Designation', sortable: true },
+                  { key: 'salary', label: 'Salary', sortable: true, sortType: 'number', render: (v: any) => (v != null ? `₹${Number(v).toLocaleString('en-IN')}` : '—') },
+                ]}
+                actions={(row: any) => (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="View profile"
+                    onClick={() => router.push(`/employees/${row._id || row.id || row.employeeId || row.empCode}`)}
+                  >
+                    <Eye className="h-4 w-4" />
                 </Button>
-              </div>
+                )}
+                searchPlaceholder="Search employees..."
+                initialPageSize={5}
+              />
             </CardContent>
           </Card>
-          
         </div>
       </div>
     </div>

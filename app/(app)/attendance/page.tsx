@@ -60,7 +60,7 @@ export default function AttendancePage() {
   const [bulkCheckIn, setBulkCheckIn] = useState<string>('');
   const [bulkCheckOut, setBulkCheckOut] = useState<string>('');
   const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkStatus, setBulkStatus] = useState<'Present' | 'Absent'>('Present');
+  const [bulkStatus, setBulkStatus] = useState<'present' | 'absent'>('present');
   const [selectedBulk, setSelectedBulk] = useState<Set<string>>(new Set());
   // employeesData is defined below via useQuery; compute these after it loads
   const allEmployeeIds = (typeof window !== 'undefined' && Array.isArray((globalThis as any).tmp)) ? [] : [];
@@ -106,7 +106,7 @@ export default function AttendancePage() {
           date: record.date,
           checkIn: record.checkIn?.includes('T') ? record.checkIn : toIso(record.date, record.checkIn),
           checkOut: record.checkOut?.includes('T') ? record.checkOut : toIso(record.date, record.checkOut),
-          status: (record.status || 'present').toString().toLowerCase() === 'present' ? 'Present' : String(record.status ?? '')
+          status: (record.status || 'present').toString().toLowerCase() === 'present' ? '[present' : String(record.status ?? '')
         };
         console.log('Create API payload:', payload);
         const response = await api.post(`http://localhost:5001/api/hr/markAttendance/${record.employeeId}`, payload);
@@ -473,7 +473,7 @@ export default function AttendancePage() {
               <Button onClick={() => { 
                 setEditing({ 
                   date: dayjs().format('YYYY-MM-DD'), 
-                  status: 'Present' as any,
+                  status: 'present' as any,
                   employeeId: '',
                   employeeName: ''
                 }); 
@@ -501,7 +501,7 @@ export default function AttendancePage() {
               onClick={() => {
                 setEditing({
                   date: dayjs().format('YYYY-MM-DD'),
-                  status: 'Present' as any,
+                  status: 'present' as any,
                   employeeId: '',
                   employeeName: ''
                 });
@@ -650,13 +650,13 @@ export default function AttendancePage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
-              <Select value={(editing?.status as any) || 'Present'} onValueChange={(v) => setEditing({ ...(editing || {}), status: v as any })}>
+              <Select value={(editing?.status as any) || 'present'} onValueChange={(v) => setEditing({ ...(editing || {}), status: v as any })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Present">Present</SelectItem>
-                  <SelectItem value="Absent">Absent</SelectItem>
+                  <SelectItem value="present">Present</SelectItem>
+                  <SelectItem value="absent">Absent</SelectItem>
                 </SelectContent>
               </Select>
             </div>

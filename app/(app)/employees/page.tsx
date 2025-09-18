@@ -33,13 +33,12 @@ import Cookies from "js-cookie";
 import { useQuery } from '@tanstack/react-query';
 import { fetchEmployees, PaginationParams } from '@/components/functions/Employee';
 import { PaginationControls } from '@/components/ui/pagination-controls';
-
+import {useMutation} from '@tanstack/react-query';
 
 
 export default function EmployeesPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const router = useRouter();
-  const { employeeFilters, setEmployeeFilters } = useFiltersStore();
   
   // Pagination state
   const [paginationParams, setPaginationParams] = useState<PaginationParams>({
@@ -47,6 +46,20 @@ export default function EmployeesPage() {
     limit: 10,
     sortBy: 'createdAt',
     sortOrder: 'desc'
+  });
+  const addEmployeeMutation = useMutation({
+    mutationFn: async (employee: Employee) => {
+      const response = await api.post('/users/register', employee);
+      return response.data;
+      
+    },
+    onSuccess: () => {
+      toast.success('Employee added successfully');
+      setShowAddDialog(false);
+    },
+    onError: (error) => {
+      toast.error('Failed to add employee');
+    },
   });
 
   const { data, isLoading, error } = useQuery({
@@ -62,10 +75,7 @@ export default function EmployeesPage() {
 
   const handleAddEmployee = async (data: any) => {
     try {
-      await api.post('/employees', data);
-      toast.success('Employee added successfully');
-      setShowAddDialog(false);
-      // Optionally: invalidate query here if using a query client
+      addEmployeeMutation.mutate(data);
     } catch (error) {
       toast.error('Failed to add employee');
     }
@@ -227,7 +237,7 @@ export default function EmployeesPage() {
               Add Employee
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Employee</DialogTitle>
               <DialogDescription>

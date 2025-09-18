@@ -109,9 +109,7 @@ export const authService = {
         };
       }
     } catch (error: any) {
-      if (this.isTokenExpiredError(error)) {
-        this.handleSessionExpired(error?.response?.data?.message);
-      }
+      // Do NOT treat login failures (401) as session-expired redirects; just return failure
       console.error('💥 Login API error:', error);
       console.error('💥 Error response:', error.response);
       return {

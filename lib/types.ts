@@ -1,4 +1,6 @@
 export interface Employee {
+  username:string,
+  password:string,
   _id: string;
   id: string;
   empCode: string;
@@ -7,11 +9,9 @@ export interface Employee {
   bloodGroup:string,
   email: string;
   phone: string;
-  
+  role: string;
   department: string;
   designation: string;
-  managerId?: string;
-  managerName?: string;
   status: 'active' | 'inactive' | 'terminated';
   joinedOn: string;
   profilePicture?: string;

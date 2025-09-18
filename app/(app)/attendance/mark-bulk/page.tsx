@@ -18,7 +18,7 @@ export default function MarkBulkAttendancePage() {
   const [bulkDate, setBulkDate] = useState<string>('');
   const [bulkCheckIn, setBulkCheckIn] = useState<string>('');
   const [bulkCheckOut, setBulkCheckOut] = useState<string>('');
-  const [bulkStatus, setBulkStatus] = useState<'Present' | 'Absent'>('Present');
+  const [bulkStatus, setBulkStatus] = useState<'present' | 'absent'>('present');
   const [selectAllBulk, setSelectAllBulk] = useState(false);
   const [selectedBulk, setSelectedBulk] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,15 +37,9 @@ export default function MarkBulkAttendancePage() {
 
   const normalized = useMemo(() => {
     const raw = (employeesData || []) as any[];
-    const onlyEmployees = raw.filter((e: any) => {
-      const role = String(e?.role || '').toLowerCase();
-      const isEmployeeFlag = e?.isEmployee === true;
-      const isPrivileged = e?.isHR === true || e?.isAdmin === true || e?.isManager === true || role === 'hr' || role === 'admin' || role === 'manager';
-      return (isEmployeeFlag || role === 'employee' || (!role && !isPrivileged)) && !isPrivileged;
-    });
-    return onlyEmployees.map((e: any) => ({
-      id: String(e.id || e._id),
-      name: e.name,
+    return raw.map((e: any) => ({
+      id: String(e._id || e.id || ''),
+      name: e.name || e.employeeName || '',
       designation: e.designation,
     }));
   }, [employeesData]);
@@ -129,13 +123,13 @@ export default function MarkBulkAttendancePage() {
           <div className="grid grid-cols-1 gap-3 mt-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
-              <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as 'Present' | 'Absent')}>
+              <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as 'present' | 'absent')}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Present">Present</SelectItem>
-                  <SelectItem value="Absent">Absent</SelectItem>
+                  <SelectItem value="present">Present</SelectItem>
+                  <SelectItem value="absent">Absent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
