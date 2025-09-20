@@ -55,17 +55,8 @@ export default function AttendancePage() {
   const [rangeStart, setRangeStart] = useState<string>('');
   const [rangeEnd, setRangeEnd] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'view' | 'mark'>('view');
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkDate, setBulkDate] = useState<string>('');
-  const [bulkCheckIn, setBulkCheckIn] = useState<string>('');
-  const [bulkCheckOut, setBulkCheckOut] = useState<string>('');
-  const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkStatus, setBulkStatus] = useState<'present' | 'absent'>('present');
-  const [selectedBulk, setSelectedBulk] = useState<Set<string>>(new Set());
-  // employeesData is defined below via useQuery; compute these after it loads
-  const allEmployeeIds = (typeof window !== 'undefined' && Array.isArray((globalThis as any).tmp)) ? [] : [];
-  let allSelected = false;
-
+  
+  
   
   const {data:employeesData} = useQuery({
     queryKey: ['employees'],
@@ -580,6 +571,7 @@ export default function AttendancePage() {
               }
 
               // Convert time format for API
+              
               const toIso = (date?: string, hhmm?: string) => {
                 if (!date || !hhmm) return undefined as unknown as string;
                 return dayjs(`${date} ${hhmm}`).toISOString();

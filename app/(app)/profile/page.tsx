@@ -83,9 +83,7 @@ export default function ProfilePage() {
             Manage your personal information and account settings
           </p>
         </div>
-        <Button variant="outline" onClick={() => setIsEditing((v) => !v)}>
-          {isEditing ? 'Done' : 'Edit'}
-        </Button>
+        
       </div>
 
       {/* Profile Header */}
