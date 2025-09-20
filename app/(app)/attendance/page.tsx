@@ -18,6 +18,9 @@ import { useFiltersStore } from '@/store/filters';
 import { Download, Clock, Pencil, Trash2, Plus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+
+dayjs.extend(utc);
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { EditModal } from '@/components/ui/edit-modal';
 import { Input } from '@/components/ui/input';
@@ -62,8 +65,7 @@ export default function AttendancePage() {
     queryKey: ['employees'],
     queryFn: fetchAllEmployees,
   });
-  const computedAllEmployeeIds = Array.from(new Set((employeesData || []).map((e: Employee) => String(e.id || (e as any)._id))));
-  const [selectAllBulk, setSelectAllBulk] = useState(false);
+  
   
   const {data:AttendanceData ,isLoading}=useQuery({
     queryKey:['attendance'],
@@ -82,21 +84,34 @@ export default function AttendancePage() {
           status: record.status,
           date: record.date,
           checkIn: record.checkIn,
-          checkOut: record.checkOut
+          checkOut: record.checkOut,
+          hoursWorked: record.hoursWorked
         };
         console.log('Update API payload:', payload);
+        console.log('Hours worked in update payload:', payload.hoursWorked, 'Type:', typeof payload.hoursWorked);
         const res = await api.put(`/hr/updateAttendance/${recordId}`, payload);
         return res.data;
       } else {
         const toIso = (date?: string, hhmm?: string) => {
           if (!date || !hhmm) return undefined as unknown as string;
-          return dayjs(`${date} ${hhmm}`).toISOString();
+          
+          // Parse the time in HH:mm format and combine with date
+          const [hours, minutes] = hhmm.split(':').map(Number);
+          if (isNaN(hours) || isNaN(minutes)) return undefined as unknown as string;
+          
+          // Create dayjs object with exact time in UTC to avoid timezone conversion
+          const dayjsDate = dayjs.utc(date).hour(hours).minute(minutes).second(0).millisecond(0);
+          
+          if (!dayjsDate.isValid()) return undefined as unknown as string;
+          
+          return dayjsDate.toISOString();
         };
         const payload = {
           employeeName: record.employeeName,
           date: record.date,
           checkIn: record.checkIn?.includes('T') ? record.checkIn : toIso(record.date, record.checkIn),
           checkOut: record.checkOut?.includes('T') ? record.checkOut : toIso(record.date, record.checkOut),
+          hoursWorked: record.hoursWorked,
           status: (record.status || 'present').toString().toLowerCase() === 'present' ? '[present' : String(record.status ?? '')
         };
         console.log('Create API payload:', payload);
@@ -180,7 +195,7 @@ export default function AttendancePage() {
     // Format the times for the input fields
     const formatTimeForInput = (time?: string) => {
       if (!time) return '';
-      const iso = dayjs(time);
+      const iso = dayjs.utc(time);
       if (iso.isValid()) return iso.format('HH:mm');
       const hm = dayjs(time, 'HH:mm', true);
       if (hm.isValid()) return hm.format('HH:mm');
@@ -210,7 +225,7 @@ export default function AttendancePage() {
 
   const formatTime = (time?: string) => {
     if (!time) return '-';
-    const iso = dayjs(time);
+    const iso = dayjs.utc(time);
     if (iso.isValid()) return iso.format('hh:mm A');
     const hm = dayjs(time, 'HH:mm', true);
     if (hm.isValid()) return hm.format('hh:mm A');
@@ -254,8 +269,8 @@ export default function AttendancePage() {
       key: 'checkIn' as keyof AttendanceRecord,
       label: 'Check In',
       render: (value: string, record: AttendanceRecord) => {
-        const start = dayjs(`${record.date} 09:15`, 'YYYY-MM-DD HH:mm');
-        const v = value && (value.includes('T') ? dayjs(value) : dayjs(`${record.date} ${value}`, 'YYYY-MM-DD HH:mm'));
+        const start = dayjs.utc(`${record.date} 09:15`, 'YYYY-MM-DD HH:mm');
+        const v = value && (value.includes('T') ? dayjs.utc(value) : dayjs.utc(`${record.date} ${value}`, 'YYYY-MM-DD HH:mm'));
         const isLate = !!(v && v.isValid() && v.isAfter(start));
         return (
           <div className="flex items-center gap-2">
@@ -273,8 +288,8 @@ export default function AttendancePage() {
       key: 'checkOut' as keyof AttendanceRecord,
       label: 'Check Out',
       render: (value: string, record: AttendanceRecord) => {
-        const cutoff = dayjs(`${record.date} 17:00`, 'YYYY-MM-DD HH:mm');
-        const v = value && (value.includes('T') ? dayjs(value) : dayjs(`${record.date} ${value}`, 'YYYY-MM-DD HH:mm'));
+        const cutoff = dayjs.utc(`${record.date} 17:00`, 'YYYY-MM-DD HH:mm');
+        const v = value && (value.includes('T') ? dayjs.utc(value) : dayjs.utc(`${record.date} ${value}`, 'YYYY-MM-DD HH:mm'));
         const isEarly = !!(v && v.isValid() && v.isBefore(cutoff));
         return (
           <div className="flex items-center gap-2">
@@ -297,10 +312,10 @@ export default function AttendancePage() {
         const parseTime = (date: string, t?: string) => {
           if (!t) return 0;
           if (t.includes('T')) {
-            const d = dayjs(t);
+            const d = dayjs.utc(t);
             return d.isValid() ? d.valueOf() : 0;
           }
-          const d = dayjs(`${date} ${t}`, 'YYYY-MM-DD HH:mm');
+          const d = dayjs.utc(`${date} ${t}`, 'YYYY-MM-DD HH:mm');
           return d.isValid() ? d.valueOf() : 0;
         };
         const start = parseTime(row.date, row.checkIn);
@@ -313,10 +328,10 @@ export default function AttendancePage() {
         const parseTime = (date: string, t?: string) => {
           if (!t) return null;
           if (t.includes('T')) {
-            const d = dayjs(t);
+            const d = dayjs.utc(t);
             return d.isValid() ? d : null;
           }
-          const d = dayjs(`${date} ${t}`, 'YYYY-MM-DD HH:mm');
+          const d = dayjs.utc(`${date} ${t}`, 'YYYY-MM-DD HH:mm');
           return d.isValid() ? d : null;
         };
         const start = parseTime(record.date, record.checkIn);
@@ -574,7 +589,17 @@ export default function AttendancePage() {
               
               const toIso = (date?: string, hhmm?: string) => {
                 if (!date || !hhmm) return undefined as unknown as string;
-                return dayjs(`${date} ${hhmm}`).toISOString();
+                
+                // Parse the time in HH:mm format and combine with date
+                const [hours, minutes] = hhmm.split(':').map(Number);
+                if (isNaN(hours) || isNaN(minutes)) return undefined as unknown as string;
+                
+                // Create dayjs object with exact time in UTC to avoid timezone conversion
+                const dayjsDate = dayjs.utc(date).hour(hours).minute(minutes).second(0).millisecond(0);
+                
+                if (!dayjsDate.isValid()) return undefined as unknown as string;
+                
+                return dayjsDate.toISOString();
               };
 
               const statusValue = (editing.status || 'present').toString().toLowerCase();
@@ -582,10 +607,48 @@ export default function AttendancePage() {
                 ? statusValue as 'present' | 'absent' | 'leave' | 'holiday' | 'half-day'
                 : 'present';
 
+              // Calculate hours worked if both check-in and check-out are provided
+              let calculatedHoursWorked = editing.hoursWorked;
+              if (editing.checkIn && editing.checkOut) {
+                // Handle both ISO format and HH:mm format
+                let checkInTime, checkOutTime;
+                
+                if (editing.checkIn.includes('T')) {
+                  // Already in ISO format
+                  checkInTime = editing.checkIn;
+                } else {
+                  // Convert HH:mm to ISO format
+                  checkInTime = toIso(editing.date, editing.checkIn);
+                }
+                
+                if (editing.checkOut.includes('T')) {
+                  // Already in ISO format
+                  checkOutTime = editing.checkOut;
+                } else {
+                  // Convert HH:mm to ISO format
+                  checkOutTime = toIso(editing.date, editing.checkOut);
+                }
+                
+                if (checkInTime && checkOutTime) {
+                  const start = dayjs.utc(checkInTime);
+                  const end = dayjs.utc(checkOutTime);
+                  
+                  if (start.isValid() && end.isValid()) {
+                    const diffMinutes = end.diff(start, 'minute');
+                    calculatedHoursWorked = Math.max(0, Math.round((diffMinutes / 60) * 10) / 10);
+                    console.log('Calculated hours worked:', calculatedHoursWorked, 'from', start.format(), 'to', end.format());
+                  }
+                }
+              } else {
+                // If only one time is provided, set hours to 0
+                calculatedHoursWorked = 0;
+              }
+
               const payload = {
                 ...editing,
                 checkIn: editing.checkIn?.includes('T') ? editing.checkIn : toIso(editing.date, editing.checkIn),
                 checkOut: editing.checkOut?.includes('T') ? editing.checkOut : toIso(editing.date, editing.checkOut),
+                hoursWorked: calculatedHoursWorked,
                 status: validStatus
               };
               
@@ -639,6 +702,38 @@ export default function AttendancePage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Check Out</label>
               <Input type="time" value={editing?.checkOut || ''} onChange={e => setEditing({ ...(editing || {}), checkOut: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Hours Worked (Calculated)</label>
+              <div className="p-2 bg-muted rounded-md text-sm">
+                {editing?.checkIn && editing?.checkOut ? (
+                  (() => {
+                    const toIso = (date?: string, hhmm?: string) => {
+                      if (!date || !hhmm) return undefined;
+                      const [hours, minutes] = hhmm.split(':').map(Number);
+                      if (isNaN(hours) || isNaN(minutes)) return undefined;
+                      const dayjsDate = dayjs.utc(date).hour(hours).minute(minutes).second(0).millisecond(0);
+                      return dayjsDate.isValid() ? dayjsDate.toISOString() : undefined;
+                    };
+                    
+                    const checkInTime = editing.checkIn.includes('T') ? editing.checkIn : toIso(editing.date, editing.checkIn);
+                    const checkOutTime = editing.checkOut.includes('T') ? editing.checkOut : toIso(editing.date, editing.checkOut);
+                    
+                    if (checkInTime && checkOutTime) {
+                      const start = dayjs.utc(checkInTime);
+                      const end = dayjs.utc(checkOutTime);
+                      if (start.isValid() && end.isValid()) {
+                        const diffMinutes = end.diff(start, 'minute');
+                        const hours = Math.max(0, Math.round((diffMinutes / 60) * 10) / 10);
+                        return `${hours} hours`;
+                      }
+                    }
+                    return 'Invalid times';
+                  })()
+                ) : (
+                  'Enter both check-in and check-out times'
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>

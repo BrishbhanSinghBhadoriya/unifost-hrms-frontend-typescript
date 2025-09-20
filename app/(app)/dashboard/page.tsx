@@ -22,6 +22,10 @@ import { useState,  useMemo } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import utc from 'dayjs/plugin/utc';
+
+dayjs.extend(relativeTime);
+dayjs.extend(utc);
 import { useQuery } from '@tanstack/react-query';
 import getDashboardData,{getEmployeesDashboardata} from '@/components/functions/getDashboardData';
 import { getUpcommingLeaves } from '@/components/functions/getUpcommingLeaves';
@@ -324,8 +328,8 @@ export default function DashboardPage() {
               <span>Present</span>
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Check-in: {empdashboardData?.data?.today?.checkIn || "--"}</span>
-              <span>Check-out: {empdashboardData?.data?.today?.checkOut || "--"}</span>
+              <span>Check-in: {empdashboardData?.data?.today?.checkIn ? dayjs.utc(empdashboardData.data.today.checkIn).format('hh:mm A') : "--"}</span>
+              <span>Check-out: {empdashboardData?.data?.today?.checkOut ? dayjs.utc(empdashboardData.data.today.checkOut).format('hh:mm A') : "--"}</span>
             </div>
             <div className="text-xs text-muted-foreground">
               Hours Worked: {empdashboardData?.data?.today.hoursWorked ?? 0}
