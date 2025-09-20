@@ -36,9 +36,9 @@ const personalInfoSchema = z.object({
   });
 const contactInfoSchema = z.object({
   email: z.string().email('Invalid email address'),
-  phone: z.string().min(10, 'Phone must be at least 10 characters'),
+  phone: z.coerce.number().min(10, 'Phone must be at least 10 characters'),
   professionalEmailId: z.string().email('Invalid email address').optional(),
-  emergencyContactNo: z.string().optional(),
+  emergencyContactNo: z.number().optional(),
 });
 const jobInfoSchema = z.object({
   employeeId: z.string().optional(),
@@ -120,9 +120,9 @@ const contactForm = useForm({
   resolver: zodResolver(contactInfoSchema),
   defaultValues: {
     email: activeUser?.email || '',
-    phone: (activeUser as any)?.phone || '',
+    phone: (activeUser as any)?.phone ? Number((activeUser as any)?.phone) : '',
     professionalEmailId: (activeUser as any)?.professionalEmailId || '',
-    emergencyContactNo: (activeUser as any)?.emergencyContactNo ? String((activeUser as any)?.emergencyContactNo) : '',
+    emergencyContactNo: (activeUser as any)?.emergencyContactNo ? Number((activeUser as any)?.emergencyContactNo) : '',
   },
 });
 const jobForm = useForm({
@@ -218,17 +218,28 @@ const savePersonal = async () => {
 const saveContact = async () => {
   setIsSavingModal(true);
   try {
+    console.log('Starting contact save...');
     const valid = await contactForm.trigger();
-    if (!valid) return;
+    console.log('Form validation result:', valid);
+    if (!valid) {
+      console.log('Form validation failed');
+      console.log('Form errors:', contactForm.formState.errors);
+      console.log('Form values:', contactForm.getValues());
+      return;
+    }
     const payload: any = {
       email: contactForm.getValues('email'),
-      phone: contactForm.getValues('phone'),
+      phone: contactForm.getValues('phone') ? Number(contactForm.getValues('phone')) : undefined,
       professionalEmailId: contactForm.getValues('professionalEmailId') || undefined,
-      emergencyContactNo: contactForm.getValues('emergencyContactNo') || undefined,
+      emergencyContactNo: contactForm.getValues('emergencyContactNo') ? Number(contactForm.getValues('emergencyContactNo')) : undefined,
     };
+    console.log('Contact payload:', payload);
+    console.log('Update target ID:', updateTargetId);
     const res = await authService.updateEmployeeProfile(updateTargetId!, payload);
+    console.log('API response:', res);
     if (res.success) {
       const returned = res.data?.user || res.data;
+      console.log('Returned data:', returned);
       updateUser({
         email: returned?.email ?? payload.email,
         phone: returned?.phone ?? payload.phone,
@@ -238,9 +249,15 @@ const saveContact = async () => {
       toast.success('Contact information saved');
       setModalOpen(null);
     } else {
+      console.error('Save failed:', res.message);
       toast.error(res.message || 'Failed to save');
     }
-  } finally { setIsSavingModal(false); }
+  } catch (error) {
+    console.error('Contact save error:', error);
+    toast.error('An error occurred while saving');
+  } finally { 
+    setIsSavingModal(false); 
+  }
 };
 
 const saveJob = async () => {
@@ -517,7 +534,7 @@ return (
       </div>
       <div className="space-y-2">
         <Label htmlFor="modal_phone">Phone</Label>
-        <Input id="modal_phone" {...contactForm.register('phone')} />
+        <Input type="number" id="modal_phone" {...contactForm.register('phone')} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="modal_pro_email">Professional Email</Label>

@@ -10,6 +10,10 @@ import EmailIcon from '@mui/icons-material/Email'
 import PhoneIcon from '@mui/icons-material/Phone'
 import LocationOnIcon from '@mui/icons-material/LocationOn'
 import PublicIcon from '@mui/icons-material/Public'
+import BloodtypeIcon from '@mui/icons-material/Bloodtype';
+import ManIcon from '@mui/icons-material/Man';
+
+
 
 const Personal_Info = () => {
   const { user } = useAuth();
@@ -73,15 +77,15 @@ console.log(user)
               color="#dbeafe"
             />
             <Tile
-              icon={<EmailIcon sx={{ fontSize: 18, color: '#16a34a' }} />}
-              label="Email"
-              value={get(user?.email)}
+              icon={<ManIcon sx={{ fontSize: 18, color: '#16a34a' }} />}
+              label="Father Name"
+              value={get(user?.fatherName)}
               color="#dcfce7"
             />
             <Tile
-              icon={<PhoneIcon sx={{ fontSize: 18, color: '#fb923c' }} />}
-              label="Phone"
-              value={get(user?.phone)}
+              icon={<BloodtypeIcon sx={{ fontSize: 18, color: '#fb923c' }} />}
+              label="Blood Group"
+              value={get(user?.bloodGroup)}
               color="#ffedd5"
             />
             <div className="space-y-2">
