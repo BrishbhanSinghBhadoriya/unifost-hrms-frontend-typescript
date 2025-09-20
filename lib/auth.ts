@@ -1,42 +1,11 @@
 // Simple authentication utility for direct backend calls
   import axios from 'axios';
   import Cookies from "js-cookie";
+  import { toast } from 'sonner';
   import {User} from "@/lib/types"
 
 
-// export interface User {
-//   id: string;
-//   username: string;
-//   email: string;
-//   name: string;
-//   role: string;
-//   department: string;
-//   phone?: string;
-//   gender?: string;
-//   designation?: string;
-//   profilePicture?: string;
-//   dateOfBirth?: string;
-//   fatherName?: string;
-//   bloodGroup?: string;
-//   professionalEmailId?:string
-//   isAdmin?: boolean;
-//   isManager?: boolean;
-//   isHR?: boolean;
-//   isEmployee?: boolean;
-//   isActive?: boolean;
-//   employeeId?: string;
-//   bankAccountType?: string;
-//   country?: string;
-//   lastLogin?: string;
-//   achievements?: string[];
-//   certifications?: string[];
-//   skills?: string[];
-//   salary?: number;
-//   address?: any;
-//   experience?: any[];
-//   education?: any[];
-//   bankDetails?: any[];
-// }
+
 
 export interface LoginResponse {
   success: boolean;
@@ -47,12 +16,31 @@ export interface LoginResponse {
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
 
 export const authService = {
+  // Centralized session expiry handling
+  handleSessionExpired(message?: string) {
+    try {
+      toast.error('Your session is expired. Please login again');
+    } catch {}
+    try { this.logout(); } catch {}
+    try { window.location.href = '/login'; } catch {}
+  },
+
+  isTokenExpiredError(errOrBody: any): boolean {
+    if (!errOrBody) return false;
+    const msg: string | undefined = errOrBody?.response?.data?.message || errOrBody?.message || errOrBody?.error || errOrBody?.msg || errOrBody?.Message || errOrBody?.MessageText || errOrBody?.data?.message;
+    const status = errOrBody?.response?.status || errOrBody?.status;
+    if (status === 401) return true;
+    if (typeof msg === 'string' && msg.toLowerCase().includes('token expired')) return true;
+    if (typeof errOrBody?.message === 'string' && errOrBody.message.toLowerCase().includes('token expired')) return true;
+    return false;
+  },
+
   async login(username: string, password: string): Promise<LoginResponse> {
     
     try {
       console.log(' Making API call to:', `${BACKEND_URL}/users/login`);
       
-             const response = await axios.post(`${BACKEND_URL}users/login`, {
+        const response = await axios.post(`${BACKEND_URL}users/login`, {
         username,
         password,
       });
@@ -62,46 +50,49 @@ export const authService = {
       if (response.status >= 200 && response.status < 300) {
         const userData = response.data;
         console.log('👤 User data received:', userData);
+        console.log('📄 Documents data:', userData.user?.documents);
 
         console.log(userData)
         
-                 const user: User = {
-           id: userData.user._id,
-           username: userData.user.username,
-           email: userData.user.email,
-           name: userData.user.name,
-           role: userData.user.role,
-           department: userData.user.department,
-           phone: userData.user.phone,
-           gender: userData.user.gender,
-           designation: userData.user.designation,
-           profilePicture: userData.user.profilePicture,
-           dob:userData.user.dob,
-           fatherName: userData.user.fatherName,
-           bloodGroup: userData.user.bloodGroup,
-           professionalEmailId:userData.user.professionalEmailId,
-           emergencyContactNo:userData.user.emergencyContactNo,
-           isAdmin: userData.user.isAdmin,
-           isManager: userData.user.isManager,
-           isHR: userData.user.isHR,
-           isEmployee: userData.user.isEmployee,
-           isActive: userData.user.isActive,
-           employeeId: userData.user.employeeId,
-           bankAccountType: userData.user.bankAccountType,
-           country: userData.user.country,
-           lastLogin: userData.user.lastLogin,
-           achievements: userData.user.achievements,
-           certifications: userData.user.certifications,
-           skills: userData.user.skills,
-           salary: userData.user.salary,
-           address: userData.user.address,
-         };
+          const user: User = {
+          id: userData.user._id,
+          username: userData.user.username,
+          email: userData.user.email,
+          name: userData.user.name,
+          role: userData.user.role,
+          department: userData.user.department,
+          phone: userData.user.phone,
+          gender: userData.user.gender,
+          designation: userData.user.designation,
+          profilePicture: userData.user.profilePicture,
+          dob:userData.user.dob,
+          fatherName: userData.user.fatherName,
+          bloodGroup: userData.user.bloodGroup,
+          professionalEmailId:userData.user.professionalEmailId,
+          emergencyContactNo:userData.user.emergencyContactNo,
+          isAdmin: userData.user.isAdmin,
+          isManager: userData.user.isManager,
+          isHR: userData.user.isHR,
+          isEmployee: userData.user.isEmployee,
+          isActive: userData.user.isActive,
+          employeeId: userData.user.employeeId,
+          workMode: userData.user.workMode,
+          lastLogin: userData.user.lastLogin,
+          jobType: userData.user.jobType,
+          reportingTo: userData.user.reportingTo,
+          joiningDate: userData.user.joiningDate,
+          skills: userData.user.skills,
+          salary: userData.user.salary,
+          address: userData.user.address,
+          documents: userData.user.documents,
+          experience: userData.user.experience,
+          education: userData.user.education,
+          bankDetails: userData.user.bankDetails,
+        };
 
-      
+     
 
-        // Store user data in localStorage
         localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('token', userData.token);
         try {
           Cookies.set('token', userData.token, { expires: 7, sameSite: 'Lax' });
         } catch {}
@@ -118,6 +109,7 @@ export const authService = {
         };
       }
     } catch (error: any) {
+      // Do NOT treat login failures (401) as session-expired redirects; just return failure
       console.error('💥 Login API error:', error);
       console.error('💥 Error response:', error.response);
       return {
@@ -141,7 +133,7 @@ export const authService = {
 
   getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('token');
+    return Cookies.get('token') || null;
   },
 
   isAuthenticated(): boolean {
@@ -200,6 +192,9 @@ export const authService = {
         return { success: false, message: 'Failed to upload profile picture' };
       }
     } catch (error: any) {
+      if (this.isTokenExpiredError(error)) {
+        this.handleSessionExpired(error?.response?.data?.message);
+      }
       console.error('💥 Profile picture upload error:', error);
       return {
         success: false,
@@ -230,10 +225,131 @@ export const authService = {
 
       return { success: false, message: 'Failed to update employee' };
     } catch (error: any) {
+      if (this.isTokenExpiredError(error)) {
+        this.handleSessionExpired(error?.response?.data?.message);
+      }
       console.error('💥 Employee update error:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to update employee'
+      };
+    }
+  },
+
+  async uploadDocument(employeeId: string, documentType: string, file: File) {
+    try {
+      const formData = new FormData();
+      formData.append(documentType, file);
+
+      const response = await fetch(`${BACKEND_URL}/api/upload/document/single/${employeeId}`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${this.getToken()}`
+        }
+      });
+
+      if (response.status === 401) {
+        const body = await response.json().catch(() => ({ message: 'Unauthorized' }));
+        this.handleSessionExpired(body?.message);
+        return { success: false, message: 'Unauthorized' };
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return {
+        success: true,
+        data: result,
+        message: 'Document uploaded successfully'
+      };
+    } catch (error: any) {
+      if (this.isTokenExpiredError(error)) {
+        this.handleSessionExpired(error?.response?.data?.message);
+      }
+      console.error('💥 Document upload error:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to upload document'
+      };
+    }
+  },
+
+  async fetchUserData(userId: string): Promise<{ success: boolean; user?: User; message?: string }> {
+    try {
+      const token = this.getToken();
+      if (!token) {
+        return { success: false, message: 'No authentication token found' };
+      }
+
+      const response = await axios.get(`${BACKEND_URL}/api/users/employee/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.status >= 200 && response.status < 300) {
+        const userData = response.data;
+        console.log('👤 Fresh user data received:', userData);
+        console.log('📄 Documents data:', userData.user?.documents);
+
+        // Get existing user data to preserve local changes
+        const existingUser = this.getCurrentUser();
+        const existingDocuments = existingUser?.documents || {};
+
+        const user: User = {
+          id: userData.user._id || userData.user.id,
+          username: userData.user.username,
+          email: userData.user.email,
+          name: userData.user.name,
+          role: userData.user.role,
+          department: userData.user.department,
+          phone: userData.user.phone,
+          gender: userData.user.gender,
+          designation: userData.user.designation,
+          profilePicture: userData.user.profilePicture,
+          dob: userData.user.dob,
+          fatherName: userData.user.fatherName,
+          bloodGroup: userData.user.bloodGroup,
+          professionalEmailId: userData.user.professionalEmailId,
+          emergencyContactNo: userData.user.emergencyContactNo,
+          isAdmin: userData.user.isAdmin,
+          isManager: userData.user.isManager,
+          isHR: userData.user.isHR,
+          isEmployee: userData.user.isEmployee,
+          isActive: userData.user.isActive,
+          employeeId: userData.user.employeeId,
+          lastLogin: userData.user.lastLogin,
+          skills: userData.user.skills,
+          salary: userData.user.salary,
+          address: userData.user.address,
+          // Merge server documents with existing local documents to preserve numbers
+          documents: {
+            ...existingDocuments,
+            ...(userData.user.documents || {}),
+          },
+        };
+
+        // Update localStorage with fresh data
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        return {
+          success: true,
+          user
+        };
+      }
+
+      return { success: false, message: 'Failed to fetch user data' };
+    } catch (error: any) {
+      if (this.isTokenExpiredError(error)) {
+        this.handleSessionExpired(error?.response?.data?.message);
+      }
+      console.error('💥 Fetch user data error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch user data'
       };
     }
   }

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, authService } from './auth';
+import { authService } from './auth';
+import { User } from './types';
 
 interface AuthContextType {
   user: User | null;
@@ -12,7 +13,7 @@ interface AuthContextType {
   updateUser: (partial: Partial<User>) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUser = (partial: Partial<User>) => {
-    setUser((prev) => {
+    setUser((prev: User | null) => {
       const next = prev ? { ...prev, ...partial } : (partial as User);
       try {
         localStorage.setItem('user', JSON.stringify(next));

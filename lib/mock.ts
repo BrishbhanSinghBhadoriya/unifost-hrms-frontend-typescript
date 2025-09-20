@@ -147,11 +147,12 @@ export const mockEmployees: Employee[] = [
 ];
 
 export const mockDepartments: Department[] = [
-  { id: '1', name: 'Engineering', code: 'ENG', managerId: '2', employeeCount: 15 },
-  { id: '2', name: 'Human Resources', code: 'HR', managerId: '3', employeeCount: 3 },
+  { id: '1', name: 'IT', code: 'IT', managerId: '2', employeeCount: 15 },
+  { id: '2', name: 'HR', code: 'HR', managerId: '3', employeeCount: 3 },
   { id: '3', name: 'Marketing', code: 'MKT', managerId: '3', employeeCount: 5 },
   { id: '4', name: 'Finance', code: 'FIN', employeeCount: 4 },
-  { id: '5', name: 'Administration', code: 'ADM', managerId: '4', employeeCount: 2 }
+  { id: '5', name: 'Sales', code: 'SALES', employeeCount: 4 },
+  { id: '6', name: 'Other', code: 'OTHER', managerId: '4', employeeCount: 2 }
 ];
 
 export const mockDesignations: Designation[] = [

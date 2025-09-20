@@ -47,7 +47,7 @@ export const fetchEmployees = async (params: PaginationParams = {}): Promise<Pag
       }
     });
     
-    console.log('API Response:', response.data);
+    console.log('Allemployeedata:', response.data);
     console.log('Query Params:', queryParams.toString());
     
     return response.data as PaginationResponse;

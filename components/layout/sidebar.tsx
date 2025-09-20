@@ -13,6 +13,7 @@ import {
   Settings,
   LayoutDashboard,
   Building,
+  Bell,
 } from 'lucide-react';
 
 const navigation = [
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Leaves', href: '/leaves', icon: FileText, roles: ['employee', 'manager', 'hr', 'admin'] },
   { name: 'Profile', href: '/profile', icon: User, roles: ['employee', 'manager', 'hr', 'admin'] },
   { name: 'Admin', href: '/admin', icon: Settings, roles: ['hr', 'admin'] },
+  {name:'Announcements', href: '/announcements', icon: Bell, roles: ['manager', 'hr', 'admin'] },
 ];
 
 interface SidebarProps {
