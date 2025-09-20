@@ -38,7 +38,7 @@ const contactInfoSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.coerce.number().min(10, 'Phone must be at least 10 characters'),
   professionalEmailId: z.string().email('Invalid email address').optional(),
-  emergencyContactNo: z.number().optional(),
+  emergencyContactNo: z.coerce.number().optional(),
 });
 const jobInfoSchema = z.object({
   employeeId: z.string().optional(),
@@ -542,7 +542,7 @@ return (
       </div>
       <div className="space-y-2">
         <Label htmlFor="modal_emg_phone">Emergency Phone Number</Label>
-        <Input id="modal_emg_phone" {...contactForm.register('emergencyContactNo')} />
+        <Input type="number" id="modal_emg_phone" {...contactForm.register('emergencyContactNo')} />
       </div>
     </form>
   </EditModal>
