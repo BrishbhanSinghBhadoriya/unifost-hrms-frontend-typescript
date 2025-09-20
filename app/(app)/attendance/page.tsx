@@ -112,9 +112,10 @@ export default function AttendancePage() {
           checkIn: record.checkIn?.includes('T') ? record.checkIn : toIso(record.date, record.checkIn),
           checkOut: record.checkOut?.includes('T') ? record.checkOut : toIso(record.date, record.checkOut),
           hoursWorked: record.hoursWorked,
-          status: (record.status || 'present').toString().toLowerCase() === 'present' ? '[present' : String(record.status ?? '')
+          status: (record.status || 'present').toString().toLowerCase()
         };
         console.log('Create API payload:', payload);
+        console.log('Hours worked in create payload:', payload.hoursWorked, 'Type:', typeof payload.hoursWorked);
         const response = await api.post(`http://localhost:5001/api/hr/markAttendance/${record.employeeId}`, payload);
         return response.data;
       }

@@ -241,7 +241,7 @@ export const authService = {
       const formData = new FormData();
       formData.append(documentType, file);
 
-      const response = await fetch(`${BACKEND_URL}/api/upload/document/single/${employeeId}`, {
+      const response = await fetch(`${BACKEND_URL}upload/document/single/${employeeId}`, {
         method: 'POST',
         body: formData,
         headers: {
