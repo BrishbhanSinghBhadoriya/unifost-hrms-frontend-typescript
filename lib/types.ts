@@ -100,6 +100,10 @@ export interface User {
   experience?: any[];
   education?: any[];
   bankDetails?: any[];
+  achievements?: string[];
+  certifications?: string[];
+  
+
 }
 
 export interface Department {
