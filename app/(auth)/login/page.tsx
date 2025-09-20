@@ -45,9 +45,14 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto bg-primary text-primary-foreground rounded-full p-3 w-16 h-16 flex items-center justify-center mb-4">
-            <Building className="h-8 w-8" />
-          </div>
+          <div className="mx-auto rounded-full overflow-hidden w-20 h-20 mb-4">
+            <img 
+                 src="/uni.webp" 
+                 alt="Company Logo" 
+                 className="w-full h-full object-cover" 
+                  />
+            </div>
+
           <CardTitle className="text-2xl font-bold">Welcome to HRMS</CardTitle>
           <CardDescription>
             Sign in to your account to continue

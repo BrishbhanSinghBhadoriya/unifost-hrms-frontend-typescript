@@ -47,9 +47,14 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
     )}>
       <div className="p-6 border-b">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-br from-primary to-accent text-primary-foreground rounded-lg p-2 shadow-sm">
-            <Building className="h-6 w-6" />
+          <div className="mx-auto rounded-full overflow-hidden w-20 h-20 mb-4">
+          <img 
+               src="/uni.webp" 
+               alt="Company Logo" 
+               className="w-full h-full object-cover" 
+               />
           </div>
+
           {!collapsed && (
             <div>
               <h1 className="font-bold text-xl tracking-tight">HRMS</h1>
