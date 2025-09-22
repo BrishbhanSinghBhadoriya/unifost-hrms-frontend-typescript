@@ -1,63 +1,71 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '@/lib/auth-context';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🚀 Form submitted with:', { username, password });
     setIsLoading(true);
 
     try {
-      console.log('🔐 Calling login function...');
       const success = await login(username, password);
-      console.log('🔐 Login result:', success);
-
       if (success) {
-        toast.success('Welcome back!');
-        router.push('/dashboard');
+        toast.success("Welcome back!");
+        router.push("/dashboard");
       } else {
-        toast.error('Invalid username or password');
+        toast.error("Invalid username or password");
       }
     } catch (error) {
-      console.error('💥 Login error:', error);
-      toast.error('An error occurred during login');
+      console.error("💥 Login error:", error);
+      toast.error("An error occurred during login");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
-      <Card className="w-full max-w-md">
+    <div
+      className="min-h-screen w-full flex items-center justify-center p-4 bg-cover bg-center"
+      style={{ backgroundImage: "url('/bg.jpg')" }} 
+    >
+      <Card className="w-full max-w-md shadow-xl rounded-2xl bg-white/90 backdrop-blur-sm">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto rounded-full overflow-hidden w-20 h-20 mb-4">
-            <img 
-                 src="/uni.webp" 
-                 alt="Company Logo" 
-                 className="w-full h-full object-cover" 
-                  />
-            </div>
+          <div className="mx-auto rounded-full overflow-hidden w-20 h-20 mb-4 shadow-md">
+            <img
+              src="/uni.webp"
+              alt="Company Logo"
+              className="w-full h-full object-cover"
+            />
+          </div>
 
-          <CardTitle className="text-2xl font-bold">Welcome to HRMS</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl font-bold text-gray-800">
+            Welcome to HRMS
+          </CardTitle>
+          <CardDescription className="text-gray-600">
             Sign in to your account to continue
           </CardDescription>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
