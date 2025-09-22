@@ -65,6 +65,10 @@ export default function EmployeesPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['employees', paginationParams],
     queryFn: () => fetchEmployees(paginationParams),
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // Debug logging
@@ -204,7 +208,7 @@ export default function EmployeesPage() {
       <Button
         size="sm"
         variant="ghost"
-        onClick={() => router.push(`/employees/${employee._id ?? employee.id}`)}
+        onClick={() => router.push(`/employees/${(employee as any)?._id}`)}
       >
         <Eye className="h-4 w-4" />
       </Button>
@@ -257,7 +261,7 @@ export default function EmployeesPage() {
         columns={columns}
         searchPlaceholder="Search by name or employee code..."
         onSearch={handleSearch}
-        onRowClick={(employee) => router.push(`/employees/${employee.id}`)}
+        onRowClick={(employee) => router.push(`/employees/${(employee as any)?._id}`)}
         actions={actions}
         filters={filters}
       />

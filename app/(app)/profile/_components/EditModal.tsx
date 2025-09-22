@@ -24,7 +24,13 @@ const [expEditIndex, setExpEditIndex] = useState<number | null>(null);
 const [eduEditIndex, setEduEditIndex] = useState<number | null>(null);
 const [bankEditIndex, setBankEditIndex] = useState<number | null>(null);
 
-const closeEdit = () => setModalOpen(null);
+const closeEdit = () => {
+  setModalOpen(null);
+  // Ensure indices are cleared when closing to avoid accidental edits on next add
+  setExpEditIndex(null);
+  // Reset experience form so a fresh add doesn't carry previous values
+  experienceForm.reset({ company: '', designation: '', startDate: '', endDate: '', description: '' });
+};
 const personalInfoSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     fatherName: z.string().optional(),
@@ -37,8 +43,8 @@ const personalInfoSchema = z.object({
 const contactInfoSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.coerce.number().min(10, 'Phone must be at least 10 characters'),
-  professionalEmailId: z.string().email('Invalid email address').optional(),
-  emergencyContactNo: z.coerce.number().optional(),
+  professionalEmailId: z.string().email('Invalid email address'),
+  emergencyContactNo: z.coerce.number().min(10, 'Phone must be at least 10 characters'),
 });
 const jobInfoSchema = z.object({
   employeeId: z.string().optional(),
@@ -134,7 +140,7 @@ const jobForm = useForm({
     workMode: (activeUser as any)?.workMode || '',
     jobType: (activeUser as any)?.jobType || '',
     reportingTo: (activeUser as any)?.reportingTo || '',
-    joiningDate: (activeUser as any)?.joiningDate ?? undefined,
+    joiningDate: toYMD((activeUser as any)?.joiningDate) || undefined,
   },
 });
 const experienceForm = useForm({
@@ -218,7 +224,6 @@ const savePersonal = async () => {
 const saveContact = async () => {
   setIsSavingModal(true);
   try {
-    console.log('Starting contact save...');
     const valid = await contactForm.trigger();
     console.log('Form validation result:', valid);
     if (!valid) {
@@ -297,7 +302,10 @@ const saveExperience = async () => {
       description: experienceForm.getValues('description') || '',
     };
     const currentList = Array.isArray((activeUser as any)?.experience) ? ([...(activeUser as any).experience]) : [];
-    const nextList = expEditIndex !== null && expEditIndex >= 0 ? currentList.map((it, i) => i === expEditIndex ? newItem : it) : [...currentList, newItem];
+    // If no valid edit index, always append; only replace when a valid index is explicitly set
+    const nextList = typeof expEditIndex === 'number' && expEditIndex >= 0
+      ? currentList.map((it, i) => i === expEditIndex ? { ...it, ...newItem } : it)
+      : [...currentList, newItem];
     const payload: any = { experience: nextList };
     const res = await authService.updateEmployeeProfile(updateTargetId!, payload);
     if (res.success) {
@@ -441,20 +449,29 @@ useEffect(() => {
     const detail = e?.detail as any;
     if (typeof detail === 'string') {
       openEdit(detail as 'personal' | 'contact' | 'job' | 'experience' | 'education' | 'bank' | 'skills' | 'address' | 'documents');
+      if (detail === 'experience') {
+        setExpEditIndex(null);
+        experienceForm.reset({ company: '', designation: '', startDate: '', endDate: '', description: '' });
+      }
       return;
     }
     if (detail && typeof detail === 'object') {
       const { key, index } = detail || {};
       if (key) openEdit(key as 'personal' | 'contact' | 'job' | 'experience' | 'education' | 'bank' | 'skills' | 'address' | 'documents');
       if (key === 'experience') {
-        setExpEditIndex(typeof index === 'number' ? index : null);
-        const item = Array.isArray((activeUser as any)?.experience) ? (activeUser as any).experience[index] : undefined;
-        if (item) {
-          experienceForm.setValue('company', item.company || '');
-          experienceForm.setValue('designation', item.designation || '');
-          experienceForm.setValue('startDate', item.startDate ? toYMD(item.startDate) : '');
-          experienceForm.setValue('endDate', item.endDate ? toYMD(item.endDate) : '');
-          experienceForm.setValue('description', item.description || '');
+        const hasIndex = typeof index === 'number' && index >= 0;
+        setExpEditIndex(hasIndex ? index : null);
+        if (hasIndex) {
+          const item = Array.isArray((activeUser as any)?.experience) ? (activeUser as any).experience[index] : undefined;
+          if (item) {
+            experienceForm.setValue('company', item.company || '');
+            experienceForm.setValue('designation', item.designation || '');
+            experienceForm.setValue('startDate', item.startDate ? toYMD(item.startDate) : '');
+            experienceForm.setValue('endDate', item.endDate ? toYMD(item.endDate) : '');
+            experienceForm.setValue('description', item.description || '');
+          }
+        } else {
+          experienceForm.reset({ company: '', designation: '', startDate: '', endDate: '', description: '' });
         }
       }
       if (key === 'education') {
@@ -531,18 +548,30 @@ return (
       <div className="space-y-2">
         <Label htmlFor="modal_email">Email</Label>
         <Input id="modal_email" type="email" {...contactForm.register('email')} />
+        {contactForm.formState.errors.email && (
+          <p className="text-xs text-red-500">{String(contactForm.formState.errors.email.message || '')}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="modal_phone">Phone</Label>
         <Input type="number" id="modal_phone" {...contactForm.register('phone')} />
+        {contactForm.formState.errors.phone && (
+          <p className="text-xs text-red-500">{String(contactForm.formState.errors.phone.message || '')}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="modal_pro_email">Professional Email</Label>
         <Input id="modal_pro_email" type="email" {...contactForm.register('professionalEmailId')} />
+        {contactForm.formState.errors.professionalEmailId && (
+          <p className="text-xs text-red-500">{String(contactForm.formState.errors.professionalEmailId.message || '')}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="modal_emg_phone">Emergency Phone Number</Label>
         <Input type="number" id="modal_emg_phone" {...contactForm.register('emergencyContactNo')} />
+        {contactForm.formState.errors.emergencyContactNo && (
+          <p className="text-xs text-red-500">{String(contactForm.formState.errors.emergencyContactNo.message || '')}</p>
+        )}
       </div>
     </form>
   </EditModal>
@@ -594,22 +623,31 @@ return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="modal_empid">Employee ID</Label>
-          <Input id="modal_empid" {...jobForm.register('employeeId')} />
+          <Input id="modal_empid" disabled {...jobForm.register('employeeId')} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="modal_dept">Department</Label>
-          <Input id="modal_dept" {...jobForm.register('department')} />
+          <Input id="modal_dept" disabled={!targetUserId && (user as any)?.role === 'employee'} {...jobForm.register('department')} />
+        {jobForm.formState.errors.department && (
+          <p className="text-xs text-red-500">{String(jobForm.formState.errors.department.message || '')}</p>
+        )}
         </div>
       </div>
       
       <div className="space-y-2">
         <Label htmlFor="modal_desig">Designation</Label>
-        <Input id="modal_desig" {...jobForm.register('designation')} />
+        <Input id="modal_desig"  {...jobForm.register('designation')} />
+        {jobForm.formState.errors.designation && (
+          <p className="text-xs text-red-500">{String(jobForm.formState.errors.designation.message || '')}</p>
+        )}
       </div>
       
       <div className="space-y-2">
         <Label htmlFor="modal_joiningDate">Joining Date</Label>
-        <Input id="modal_joiningDate" type="date" {...jobForm.register('joiningDate')} />
+        <Input id="modal_joiningDate" disabled={!targetUserId && (user as any)?.role === 'employee'} type="date" {...jobForm.register('joiningDate')} />
+        {jobForm.formState.errors.joiningDate && (
+          <p className="text-xs text-red-500">{String(jobForm.formState.errors.joiningDate.message || '')}</p>
+        )}
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -677,9 +715,17 @@ return (
 
   <EditModal
     open={modalOpen === 'experience'}
-    onOpenChange={(o) => (o ? openEdit('experience') : closeEdit())}
-    title="Add Experience"
-    description="Add a new work experience"
+    onOpenChange={(o) => {
+      if (o) {
+        // Opening: rely on the event detail to decide add vs edit; do not reset here
+        openEdit('experience');
+      } else {
+        // Closing: clear state and reset
+        closeEdit();
+      }
+    }}
+    title={expEditIndex !== null && expEditIndex >= 0 ? 'Edit Experience' : 'Add Experience'}
+    description={expEditIndex !== null && expEditIndex >= 0 ? 'Update this work experience' : 'Add a new work experience'}
     onSave={saveExperience}
     isSaving={isSavingModal}
   >
@@ -687,19 +733,31 @@ return (
       <div className="space-y-2">
         <Label htmlFor="exp_company">Company *</Label>
         <Input id="exp_company" {...experienceForm.register('company')} />
+        {experienceForm.formState.errors.company && (
+          <p className="text-xs text-red-500">{String(experienceForm.formState.errors.company.message || '')}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="exp_designation">Designation *</Label>
         <Input id="exp_designation" {...experienceForm.register('designation')} />
+        {experienceForm.formState.errors.designation && (
+          <p className="text-xs text-red-500">{String(experienceForm.formState.errors.designation.message || '')}</p>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="exp_start">Start Date *</Label>
           <Input id="exp_start" type="date" {...experienceForm.register('startDate')} />
+          {experienceForm.formState.errors.startDate && (
+            <p className="text-xs text-red-500">{String(experienceForm.formState.errors.startDate.message || '')}</p>
+          )}
         </div>
         <div>
           <Label htmlFor="exp_end">End Date</Label>
           <Input id="exp_end" type="date" {...experienceForm.register('endDate')} />
+          {experienceForm.formState.errors.endDate && (
+            <p className="text-xs text-red-500">{String((experienceForm.formState.errors as any)?.endDate?.message || '')}</p>
+          )}
         </div>
       </div>
       <div className="space-y-2">
@@ -721,6 +779,9 @@ return (
       <div className="space-y-2">
         <Label htmlFor="edu_degree">Degree *</Label>
         <Input id="edu_degree" {...educationForm.register('degree')} />
+        {educationForm.formState.errors.degree && (
+          <p className="text-xs text-red-500">{String(educationForm.formState.errors.degree.message || '')}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="edu_institution">Institution</Label>
@@ -759,24 +820,39 @@ return (
       <div className="space-y-2">
         <Label htmlFor="bank_name">Bank Name *</Label>
         <Input id="bank_name" {...bankForm.register('bankName')} />
+        {bankForm.formState.errors.bankName && (
+          <p className="text-xs text-red-500">{String(bankForm.formState.errors.bankName.message || '')}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="bank_holder">Account Holder Name *</Label>
         <Input id="bank_holder" {...bankForm.register('bankAccountHolderName')} />
+        {bankForm.formState.errors.bankAccountHolderName && (
+          <p className="text-xs text-red-500">{String(bankForm.formState.errors.bankAccountHolderName.message || '')}</p>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="bank_accno">Account Number *</Label>
           <Input id="bank_accno" {...bankForm.register('bankAccountNumber')} />
+          {bankForm.formState.errors.bankAccountNumber && (
+            <p className="text-xs text-red-500">{String(bankForm.formState.errors.bankAccountNumber.message || '')}</p>
+          )}
         </div>
         <div>
           <Label htmlFor="bank_type">Account Type *</Label>
           <Input id="bank_type" {...bankForm.register('bankAccountType')} />
+          {bankForm.formState.errors.bankAccountType && (
+            <p className="text-xs text-red-500">{String(bankForm.formState.errors.bankAccountType.message || '')}</p>
+          )}
         </div>
           </div>
           <div className="space-y-2">
         <Label htmlFor="bank_ifsc">IFSC *</Label>
         <Input id="bank_ifsc" {...bankForm.register('bankIFSC')} />
+        {bankForm.formState.errors.bankIFSC && (
+          <p className="text-xs text-red-500">{String(bankForm.formState.errors.bankIFSC.message || '')}</p>
+        )}
           </div>
         </form>
       </EditModal>

@@ -135,7 +135,7 @@ export default function AttendancePage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       console.log('Delete mutation called with ID:', id);
-      const res = await api.delete(`/hr/deleteAttendance/${id}`);
+      const res = await api.updateEmployeeProfile(`/hr/deleteAttendance/${id}`);
       return res.data;
     },
     onSuccess: () => {

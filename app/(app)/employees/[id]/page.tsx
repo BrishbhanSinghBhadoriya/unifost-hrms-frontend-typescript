@@ -27,12 +27,20 @@ export default function EmployeeProfilePage() {
   const getEmployeeById = async (id: string): Promise<any | null> => {
     const response = await api.get(`/hr/getEmployee/${id}`);
     const list = response.data?.data;
-    return Array.isArray(list) && list.length > 0 ? list[0] : null;
+    if (Array.isArray(list)) {
+      const match = list.find((e: any) => String(e?._id ?? e?.id) === String(id));
+      return match || list[0] || null;
+    }
+    return null;
   };
 
   const { data: employee, isLoading } = useQuery({
     queryKey: ['employee', id],
     queryFn: () => getEmployeeById(id),
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // Scope the employee into a local auth context that does NOT persist or touch global auth

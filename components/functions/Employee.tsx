@@ -58,3 +58,13 @@ export const fetchAllEmployees = async (): Promise<Employee[]> => {
     const response = await fetchEmployees({ limit: 1000 }); // Get all employees
     return response.data;
   };
+
+  export const deleteEmployee = async (userId: string): Promise<{ success: boolean; data?: any; message?: string }> => {
+    const token = Cookies.get('token');
+    const response = await api.delete(`/hr/deleteEmployee/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  };

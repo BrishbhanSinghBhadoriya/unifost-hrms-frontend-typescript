@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardTitle, CardHeader } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth-context'
@@ -8,6 +8,16 @@ import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 function capitalizeFirst(s?: string) {
   if (!s) return '';
@@ -16,15 +26,27 @@ function capitalizeFirst(s?: string) {
 
 const BankdetailsTab = () => {
   const { user, updateUser } = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingBank, setDeletingBank] = useState<{ index: number; item: any } | null>(null);
 
-  const handleDelete = async (idx: number) => {
+  const handleDeleteClick = (idx: number) => {
     const list = Array.isArray((user as any)?.bankDetails) ? ([...(user as any).bankDetails]) : [];
-    list.splice(idx, 1);
-    const res = await authService.updateEmployeeProfile((user as any).id, { bankDetails: list });
+    const item = list[idx];
+    setDeletingBank({ index: idx, item });
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingBank) return;
+    const current = Array.isArray((user as any)?.bankDetails) ? ([...(user as any).bankDetails]) : [];
+    const next = current.filter((_: any, i: number) => i !== deletingBank.index);
+    const res = await authService.updateEmployeeProfile(((user as any)?._id || (user as any)?.id) as string, { bankDetails: next });
     if (res.success) {
       const returned = res.data?.user || res.data;
-      updateUser({ ...(returned || {}), bankDetails: returned?.bankDetails ?? list } as any);
+      updateUser({ ...(returned || {}), bankDetails: returned?.bankDetails ?? next } as any);
       toast.success('Bank detail removed');
+      setDeleteOpen(false);
+      setDeletingBank(null);
     } else {
       toast.error(res.message || 'Failed to remove');
     }
@@ -68,7 +90,7 @@ const BankdetailsTab = () => {
                   <EditIcon sx={{ fontSize: 14, marginRight: 0.5 }} />
                   Edit
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => handleDelete(idx)}>
+                <Button size="sm" variant="outline" onClick={() => handleDeleteClick(idx)}>
                   <DeleteIcon sx={{ fontSize: 14, marginRight: 0.5 }} />
                   Delete
                 </Button>
@@ -80,7 +102,24 @@ const BankdetailsTab = () => {
         <div className="text-sm text-muted-foreground">No bank details added yet.</div>
       )}
     </CardContent>
-  </Card></div>
+  </Card>
+
+  {/* Delete Confirmation Dialog */}
+  <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+        <AlertDialogDescription>
+          Are you sure you want to delete bank detail for <strong>{deletingBank?.item?.bankName}</strong> ({deletingBank?.item?.bankAccountNumber})? This action cannot be undone.
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
+  </div>
   )
 }
 

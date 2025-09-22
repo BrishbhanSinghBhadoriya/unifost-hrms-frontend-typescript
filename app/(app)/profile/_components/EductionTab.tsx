@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardTitle, CardHeader } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth-context'
@@ -8,18 +8,40 @@ import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import SchoolIcon from '@mui/icons-material/School'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const EductionTab = () => {
   const { user, updateUser } = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingEducation, setDeletingEducation] = useState<{ index: number; item: any } | null>(null);
 
-  const handleDelete = async (idx: number) => {
+  const handleDeleteClick = (idx: number) => {
     const list = Array.isArray((user as any)?.education) ? ([...(user as any).education]) : [];
-    list.splice(idx, 1);
-    const res = await authService.updateEmployeeProfile((user as any).id, { education: list });
+    const item = list[idx];
+    setDeletingEducation({ index: idx, item });
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingEducation) return;
+    const current = Array.isArray((user as any)?.education) ? ([...(user as any).education]) : [];
+    const next = current.filter((_: any, i: number) => i !== deletingEducation.index);
+    const res = await authService.updateEmployeeProfile(((user as any)?._id || (user as any)?.id) as string, { education: next });
     if (res.success) {
       const returned = res.data?.user || res.data;
-      updateUser({ ...(returned || {}), education: returned?.education ?? list } as any);
+      updateUser({ ...(returned || {}), education: returned?.education ?? next } as any);
       toast.success('Education removed');
+      setDeleteOpen(false);
+      setDeletingEducation(null);
     } else {
       toast.error(res.message || 'Failed to remove');
     }
@@ -70,7 +92,7 @@ const EductionTab = () => {
                       <EditIcon sx={{ fontSize: 14, marginRight: 0.5 }} />
                       Edit
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(idx)}>
+                    <Button size="sm" variant="outline" onClick={() => handleDeleteClick(idx)}>
                       <DeleteIcon sx={{ fontSize: 14, marginRight: 0.5 }} />
                       Delete
                     </Button>
@@ -83,6 +105,22 @@ const EductionTab = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the education record for <strong>{deletingEducation?.item?.degree}</strong> at <strong>{deletingEducation?.item?.institution}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -235,6 +235,8 @@ export const authService = {
       };
     }
   },
+  
+  
 
   async uploadDocument(employeeId: string, documentType: string, file: File) {
     try {

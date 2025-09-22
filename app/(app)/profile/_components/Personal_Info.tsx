@@ -12,6 +12,8 @@ import LocationOnIcon from '@mui/icons-material/LocationOn'
 import PublicIcon from '@mui/icons-material/Public'
 import BloodtypeIcon from '@mui/icons-material/Bloodtype';
 import ManIcon from '@mui/icons-material/Man';
+import dayjs from "dayjs";
+
 
 
 
@@ -71,11 +73,16 @@ console.log(user)
               color="#ede9fe"
             />
             <Tile
-              icon={<EventIcon sx={{ fontSize: 18, color: '#2563eb' }} />}
-              label="Date of Birth"
-              value={get((user as any)?.dob || (user as any)?.dateOfBirth)}
-              color="#dbeafe"
-            />
+  icon={<EventIcon sx={{ fontSize: 18, color: '#2563eb' }} />}
+  label="Date of Birth"
+  value={
+    (user as any)?.dob || (user as any)?.dateOfBirth
+      ? dayjs((user as any)?.dob || (user as any)?.dateOfBirth).format("DD-MM-YYYY")
+      : "-"
+  }
+  color="#dbeafe"
+/>
+
             <Tile
               icon={<ManIcon sx={{ fontSize: 18, color: '#16a34a' }} />}
               label="Father Name"

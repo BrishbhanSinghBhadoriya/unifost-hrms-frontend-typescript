@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardTitle, CardHeader } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth-context'
@@ -8,20 +8,71 @@ import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import BusinessIcon from '@mui/icons-material/Business'
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const ExperienceTab = () => {
   const { user, updateUser } = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingExperience, setDeletingExperience] = useState<any>(null);
 
-  const handleDelete = async (idx: number) => {
-    const list = Array.isArray((user as any)?.experience) ? ([...(user as any).experience]) : [];
-    list.splice(idx, 1);
-    const res = await authService.updateEmployeeProfile((user as any).id, { experience: list });
-    if (res.success) {
-      const returned = res.data?.user || res.data;
-      updateUser({ ...(returned || {}), experience: returned?.experience ?? list } as any);
+  const qc = useQueryClient();
+  const deleteMutation = useMutation({
+    mutationFn: async (args: { id?: string; index?: number }) => {
+      const currentExperience = Array.isArray((user as any)?.experience) ? [...(user as any).experience] : [];
+      const updatedExperience = currentExperience.filter((item: any, index: number) => {
+        if (args?.id) return String(item?._id) !== String(args.id);
+        if (typeof args?.index === 'number') return index !== args.index;
+        return true;
+      });
+      
+      const result = await authService.updateEmployeeProfile(user?._id as string, {
+        experience: updatedExperience
+      });
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to update profile');
+      }
+      
+      return { result, updatedExperience };
+    },
+    onSuccess: (data) => {
+      // Update local user state immediately
+      updateUser({
+        experience: data.updatedExperience
+      } as any);
+      
       toast.success('Experience removed');
-    } else {
-      toast.error(res.message || 'Failed to remove');
+      qc.invalidateQueries({ queryKey: ['employee', (user as any)?._id || user?.id] });
+    },
+    onError: (error) => {
+      console.error('Delete experience error:', error);
+      toast.error('Failed to remove experience');
+    },
+  });
+
+
+
+  const handleDeleteClick = (idx: number) => {
+    const experience = (user as any).experience[idx];
+    setDeletingExperience({ ...experience, index: idx, id: experience?._id });
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingExperience) {
+      deleteMutation.mutate({ id: deletingExperience?.id, index: deletingExperience?.index });
+      setDeleteOpen(false);
+      setDeletingExperience(null);
     }
   };
 
@@ -44,7 +95,7 @@ const ExperienceTab = () => {
           {Array.isArray((user as any).experience) && (user as any).experience.length > 0 ? (
             <div className="space-y-3">
               {(user as any).experience.map((exp: any, idx: number) => (
-                <div key={idx} className="border rounded-md p-3">
+                <div key={exp?._id || idx} className="border rounded-md p-3">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
                       <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
@@ -67,7 +118,7 @@ const ExperienceTab = () => {
                       <EditIcon sx={{ fontSize: 14, marginRight: 0.5 }} />
                       Edit
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(idx)}>
+                    <Button size="sm" variant="outline" onClick={() => handleDeleteClick(idx)}>
                       <DeleteIcon sx={{ fontSize: 14, marginRight: 0.5 }} />
                       Delete
                     </Button>
@@ -80,6 +131,27 @@ const ExperienceTab = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the experience record for <strong>{deletingExperience?.company}</strong> as <strong>{deletingExperience?.designation}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -26,20 +26,15 @@ const DocumentTab = () => {
   
   const documents = (user as any)?.documents || {};
   
-  // Debug: Log documents data
-  useEffect(() => {
-    console.log('📄 DocumentTab - User documents:', documents);
-    console.log('📄 DocumentTab - Aadhar number:', documents.adharNumber);
-    console.log('📄 DocumentTab - PAN number:', documents.panNumber);
-  }, [documents]);
-  
+  console.log((user as any)?._id)
   // Refresh user data on component mount to ensure we have latest documents
   useEffect(() => {
     const refreshUserData = async () => {
-      if (user?.id) {
+      const targetId = (user as any)?._id || user?.id;
+      if (targetId) {
         try {
           console.log('🔄 Refreshing user data for documents...');
-          const result = await authService.fetchUserData(user.id);
+          const result = await authService.fetchUserData(targetId as string);
           console.log('🔄 Refresh result:', result);
           if (result.success && result.user) {
             console.log('🔄 Updating user with fresh data:', result.user);
@@ -53,7 +48,7 @@ const DocumentTab = () => {
 
     // Always refresh on mount to get latest data
     refreshUserData();
-  }, [user?.id, updateUser]);
+  }, [user?._id, user?.id, updateUser]);
   
   const documentFields = [
     {
@@ -140,7 +135,7 @@ const DocumentTab = () => {
       return;
     }
 
-    if (!user?.id) {
+    if (!user?._id) {
       toast.error('User not found');
       return;
     }
@@ -148,7 +143,7 @@ const DocumentTab = () => {
     setUploadingFiles(prev => new Set(prev).add(documentKey));
     
     try {
-      const result = await authService.uploadDocument(user.id, documentKey, file);
+      const result = await authService.uploadDocument(user._id, documentKey, file);
       
       if (result.success) {
         // Update user state with the new document URL
@@ -163,7 +158,7 @@ const DocumentTab = () => {
         
         // Also update the server with the document URL
         try {
-          await authService.updateEmployeeProfile(user.id, {
+          await authService.updateEmployeeProfile(((user as any)?._id || user?.id) as string, {
             documents: updatedDocuments
           });
         } catch (error) {
@@ -207,7 +202,7 @@ const DocumentTab = () => {
   };
 
   const handleNumberSave = async (numberKey: string) => {
-    if (!user?.id) {
+    if (!(user as any)?._id && !user?.id) {
       toast.error('User not found');
       return;
     }
@@ -227,7 +222,7 @@ const DocumentTab = () => {
       console.log('💾 Saving document number:', { numberKey, newValue, updatedDocuments });
 
       // Update server
-      const result = await authService.updateEmployeeProfile(user.id, {
+      const result = await authService.updateEmployeeProfile(((user as any)?._id || user?.id) as string, {
         documents: updatedDocuments
       });
 
@@ -286,10 +281,8 @@ const DocumentTab = () => {
     if (!number) return '';
     
     if (type === 'aadhar') {
-      // Format Aadhar: 1234 5678 9012
       return number.replace(/(\d{4})(\d{4})(\d{4})/, '$1 $2 $3');
     } else if (type === 'pan') {
-      // Format PAN: ABCDE1234F
       return number.toUpperCase();
     }
     return number;
