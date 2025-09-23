@@ -3,7 +3,7 @@ export interface Employee {
   password:string,
   _id: string;
   employeeId: string;
-
+ id:string;
   managerId?: string;
   managerName?: string;
   dateOfBirth?: string;
