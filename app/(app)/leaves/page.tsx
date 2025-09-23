@@ -205,7 +205,7 @@ export default function LeavesPage() {
           <SelectContent>
             <SelectItem value="all">All Employees</SelectItem>
             {mockEmployees.map((emp) => (
-              <SelectItem key={emp.id} value={emp.id}>
+              <SelectItem key={emp.id} value={emp.id || ''}>
                 {emp.name}
               </SelectItem>
             ))}

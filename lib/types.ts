@@ -3,6 +3,9 @@ export interface Employee {
   password:string,
   _id: string;
   id: string;
+  managerId?: string;
+  managerName?: string;
+  dateOfBirth?: string;
   empCode: string;
   name: string;
   fatherName:string,
@@ -16,6 +19,7 @@ export interface Employee {
   joinedOn: string;
   profilePicture?: string;
   dob?: string;
+  avatarUrl?: string;
   address?: string;
   emergencyContact?: {
     name: string;
@@ -99,6 +103,7 @@ export interface User {
   dob?: string;
   gender?: "male" | "female" | "other";
   profilePicture?: string;
+  avatarUrl?: string;
   professionalEmailId?: string;
   emergencyContactNo?: number;
 

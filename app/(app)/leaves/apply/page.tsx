@@ -14,7 +14,8 @@ export default function ApplyLeavePage() {
   const router = useRouter();
   const { user } = useAuth();
   const currentEmployeeId = user?.id;
-  const leaveBalance = getLeaveBalance(currentEmployeeId);
+  console.log('currentEmployeeId', currentEmployeeId);
+  const leaveBalance = getLeaveBalance(currentEmployeeId || '');
 
   const handleSubmit = async (data: any) => {
     try {

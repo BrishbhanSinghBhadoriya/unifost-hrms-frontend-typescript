@@ -322,7 +322,7 @@ export default function DashboardPage() {
     <div className="text-sm">
       {empdashboardData?.data ? (
         empdashboardData?.data?.today.status === "present" ? (
-          <div className="space-y-2">
+          <div className="space-y-2">a
             <div className="flex items-center gap-2">
               <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
               <span>Present</span>
@@ -426,54 +426,7 @@ export default function DashboardPage() {
         {/* Profile & Attendance */}
         
 
-        {/* Payroll & Announcements */}
-        <div className="grid grid-cols-1 gap-6 w-full xl:col-span-3">
-          <Card className="rounded-2xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 bg-gradient-to-br from-card to-secondary/40 border-border/70 w-full lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-muted-foreground" /> Payroll
-                </CardTitle>
-                <CardDescription>Salaries overview for all employees</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => router.push('/employees')}>
-                See all employees
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                data={(allEmployees || []) as any[]}
-                columns={[
-                  { key: 'profilePicture', label: 'Photo', sortable: false, render: (_: any, row: any) => (
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={row.profilePicture} />
-                      <AvatarFallback>
-                        {(row.name || row.employeeName || '')?.split(' ').map((n: string) => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                  )},
-                  { key: 'name', label: 'Name', sortable: true, render: (_: any, row: any) => row.name || row.employeeName },
-                  { key: 'employeeId', label: 'Emp ID', sortable: true, render: (_: any, row: any) => row.employeeId || row.empCode || row._id || row.id },
-                  { key: 'department', label: 'Department', sortable: true },
-                  { key: 'designation', label: 'Designation', sortable: true },
-                  { key: 'salary', label: 'Salary', sortable: true, sortType: 'number', render: (v: any) => (v != null ? `₹${Number(v).toLocaleString('en-IN')}` : '—') },
-                ]}
-                actions={(row: any) => (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="View profile"
-                    onClick={() => router.push(`/employees/${row._id || row.id || row.employeeId || row.empCode}`)}
-                  >
-                    <Eye className="h-4 w-4" />
-                </Button>
-                )}
-                searchPlaceholder="Search employees..."
-                initialPageSize={5}
-              />
-            </CardContent>
-          </Card>
-        </div>
+        
       </div>
     </div>
   );

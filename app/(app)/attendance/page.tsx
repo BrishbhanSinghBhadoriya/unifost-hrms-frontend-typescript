@@ -25,6 +25,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { EditModal } from '@/components/ui/edit-modal';
 import { Input } from '@/components/ui/input';
 import api from '@/lib/api';
+import type { AxiosError } from 'axios';
 import { fetchAllEmployees } from '@/components/functions/Employee';
 import { fetchEmployeesAttenedence } from '@/components/functions/getAttendence';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -41,6 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+ 
 
 export default function AttendancePage() {
   const { user } = useAuth();
@@ -117,6 +119,7 @@ export default function AttendancePage() {
         console.log('Create API payload:', payload);
         console.log('Hours worked in create payload:', payload.hoursWorked, 'Type:', typeof payload.hoursWorked);
         const response = await api.post(`http://localhost:5001/api/hr/markAttendance/${record.employeeId}`, payload);
+       
         return response.data;
       }
     },
@@ -128,14 +131,15 @@ export default function AttendancePage() {
     },
     onError: (error) => {
       console.error('Save error:', error);
-      toast.error('Save failed');
+      const axiosErr = error as AxiosError<{ message?: string }>;
+      toast.error(axiosErr?.response?.data?.message || 'Save failed');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       console.log('Delete mutation called with ID:', id);
-      const res = await api.updateEmployeeProfile(`/hr/deleteAttendance/${id}`);
+      const res = await api.delete(`/hr/deleteAttendance/${id}`);
       return res.data;
     },
     onSuccess: () => {
@@ -144,7 +148,8 @@ export default function AttendancePage() {
     },
     onError: (error) => {
       console.error('Delete error:', error);
-      toast.error('Delete failed');
+      const axiosErr = error as AxiosError<{ message?: string }>;
+      toast.error(axiosErr?.response?.data?.message || 'Delete failed');
     },
   });
 

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 interface StatCardProps {
   title: string;
   value: string | number;
-  icon: LucideIcon;
+  icon: typeof LucideIcon;
   description?: string;
   valueSuffix?: string;
   accentClassName?: string; // e.g. 'bg-blue-100 text-blue-600'

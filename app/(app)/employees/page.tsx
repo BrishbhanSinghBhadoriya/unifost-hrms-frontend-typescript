@@ -25,7 +25,6 @@ import { EmployeeForm } from '@/components/forms/employee-form';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import { Employee } from '@/lib/types';
 import { mockDepartments } from '@/lib/mock';
-import { useFiltersStore } from '@/store/filters';
 import { UserPlus, Eye, Edit, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';

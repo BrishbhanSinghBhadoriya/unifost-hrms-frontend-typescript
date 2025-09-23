@@ -1,6 +1,6 @@
 import { Employee, AttendanceRecord, Holiday, LeaveRequest, User, Department, Designation, LeaveBalance } from './types';
 
-export const mockUsers: User[] = [
+export const mockUsers: Partial<User>[] = [
   {
     id: '1',
     username: 'john.doe',
@@ -39,7 +39,7 @@ export const mockUsers: User[] = [
   }
 ];
 
-export const mockEmployees: Employee[] = [
+export const mockEmployees: Partial<Employee>[] = [
   {
     id: '1',
     empCode: 'EMP001',
@@ -248,35 +248,6 @@ export const mockAttendance: AttendanceRecord[] = [
   }
 ];
 
-export const mockLeaveRequests: LeaveRequest[] = [
-  {
-    id: '1',
-    employeeId: '1',
-    employeeName: 'John Doe',
-    type: 'casual',
-    startDate: '2024-01-17',
-    endDate: '2024-01-17',
-    days: 1,
-    reason: 'Personal work',
-    status: 'approved',
-    approverId: '2',
-    approverName: 'Sarah Johnson',
-    appliedOn: '2024-01-10',
-    approvedOn: '2024-01-12'
-  },
-  {
-    id: '2',
-    employeeId: '5',
-    employeeName: 'Emily Chen',
-    type: 'sick',
-    startDate: '2024-01-20',
-    endDate: '2024-01-22',
-    days: 3,
-    reason: 'Flu symptoms',
-    status: 'pending',
-    appliedOn: '2024-01-18'
-  }
-];
 
 export const mockLeaveBalances: LeaveBalance[] = [
   {
@@ -302,7 +273,7 @@ export const mockLeaveBalances: LeaveBalance[] = [
 // Helper functions
 
 
-export const getEmployeesByDepartment = (department: string): Employee[] => {
+export const getEmployeesByDepartment = (department: string): Partial<Employee>[] => {
   return mockEmployees.filter(emp => emp.department === department);
 };
 
@@ -317,19 +288,9 @@ export const getAttendanceByEmployee = (employeeId: string, month?: string): Att
   });
 };
 
-export const getLeaveRequestsByEmployee = (employeeId: string): LeaveRequest[] => {
-  return mockLeaveRequests.filter(request => request.employeeId === employeeId);
-};
+
 
 export const getLeaveBalance = (employeeId: string): LeaveBalance | undefined => {
   return mockLeaveBalances.find(balance => balance.employeeId === employeeId);
 };
 
-export const getUserByCredentials = (email: string, password: string): User | undefined => {
-  // Simple mock authentication - in production, this would be properly hashed
-  const user = mockUsers.find(u => u.email === email);
-  if (user && password === 'password') {
-    return user;
-  }
-  return undefined;
-};
