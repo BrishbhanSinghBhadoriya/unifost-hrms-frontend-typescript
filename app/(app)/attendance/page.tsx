@@ -118,7 +118,7 @@ export default function AttendancePage() {
         };
         console.log('Create API payload:', payload);
         console.log('Hours worked in create payload:', payload.hoursWorked, 'Type:', typeof payload.hoursWorked);
-        const response = await api.post(`http://localhost:5001/api/hr/markAttendance/${record.employeeId}`, payload);
+        const response = await api.post(`/hr/markAttendance/${record.employeeId}`, payload);
        
         return response.data;
       }
