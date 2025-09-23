@@ -2,7 +2,8 @@ export interface Employee {
   username:string,
   password:string,
   _id: string;
-  id: string;
+  employeeId: string;
+
   managerId?: string;
   managerName?: string;
   dateOfBirth?: string;

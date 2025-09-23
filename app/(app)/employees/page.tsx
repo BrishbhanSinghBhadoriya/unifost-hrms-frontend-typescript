@@ -33,6 +33,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchEmployees, PaginationParams } from '@/components/functions/Employee';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import {useMutation} from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 
 
 export default function EmployeesPage() {
@@ -49,6 +50,7 @@ export default function EmployeesPage() {
   const addEmployeeMutation = useMutation({
     mutationFn: async (employee: Employee) => {
       const response = await api.post('/users/register', employee);
+      console.log('Employee added successfully', response.data);
       return response.data;
       
     },
@@ -57,11 +59,12 @@ export default function EmployeesPage() {
       setShowAddDialog(false);
     },
     onError: (error) => {
-      toast.error('Failed to add employee');
+      const axiosErr = error as AxiosError<{ message?: string }>;
+      toast.error(axiosErr?.response?.data?.message || 'Failed to add employee');
     },
   });
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['employees', paginationParams],
     queryFn: () => fetchEmployees(paginationParams),
     refetchOnMount: 'always',
@@ -77,11 +80,9 @@ export default function EmployeesPage() {
   
 
   const handleAddEmployee = async (data: any) => {
-    try {
+   
       addEmployeeMutation.mutate(data);
-    } catch (error) {
-      toast.error('Failed to add employee');
-    }
+    
   };
 
   // Pagination handlers
@@ -114,6 +115,16 @@ export default function EmployeesPage() {
   };
 
   const columns = [
+    {
+      key: 'employeeId' as keyof Employee,
+      label: 'Employee ID',
+      sortable: true,
+      sortType: 'string' as const,
+      sortAccessor: (row: Employee) => row.employeeId ,
+      render: (value: string) => (
+        <div>{value}</div>
+      ),
+    },
     {
       key: 'name' as keyof Employee,
       label: 'Employee',

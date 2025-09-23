@@ -203,6 +203,14 @@ export default function DashboardPage() {
                 <DataTable
                   data={(upcomingLeave?.upcomingLeaves || []) as any[]}
                   columns={[
+
+                    {
+                      key: 'employeeId',
+                      label: 'Employee ID',
+                      sortable: true,
+                      sortType: 'string' as const,
+                      sortAccessor: (row: any) => row.employeeId as any,
+                    },
         {
           key: 'profilePicture',
           label: 'Photo',

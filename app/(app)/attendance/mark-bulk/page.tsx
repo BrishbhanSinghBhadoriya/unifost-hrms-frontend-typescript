@@ -114,10 +114,7 @@ export default function MarkBulkAttendancePage() {
               <label className="text-sm font-medium">Check In (optional)</label>
               <Input type="time" value={bulkCheckIn} onChange={(e) => setBulkCheckIn(e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Check Out (optional)</label>
-              <Input type="time" value={bulkCheckOut} onChange={(e) => setBulkCheckOut(e.target.value)} />
-            </div>
+            
           </div>
 
           <div className="grid grid-cols-1 gap-3 mt-4">

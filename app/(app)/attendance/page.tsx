@@ -247,16 +247,39 @@ export default function AttendancePage() {
 
   // Build a map of employeeId -> employee for quick lookup
   const employeeIdToName = new Map<string, string>(
-    (employeesData || []).map((e: Employee) => [String((e.id || (e as any)._id)), e.name])
+    (employeesData || []).map((e: Employee) => [String(( (e as any)._id)), e.name])
   );
 
   const columns = [
+    {
+      key: 'employeeId' as keyof AttendanceRecord,
+      label: 'Employee ID',
+      sortable: true,
+      sortType: 'string' as const,
+      sortAccessor: (row: AttendanceRecord) => {
+        const v: any = row.employeeId as any;
+        if (typeof v === 'string' || typeof v === 'number') return String(v);
+        if (v && typeof v === 'object') return String(v.employeeId || '');
+        return '';
+      },
+      render: (_value: any, row: AttendanceRecord) => {
+        const v: any = row.employeeId as any;
+        const display = typeof v === 'string' || typeof v === 'number'
+          ? String(v)
+          : String(v?.employeeId || v?.empCode || v?._id || v?.id || '');
+        return <div>{display || '-'}</div>;
+      },
+    },  
     {
       key: 'employeeName' as keyof AttendanceRecord,
       label: 'Employee Name',
       sortable: true,
       sortType: 'string' as const,
-      sortAccessor: (row: AttendanceRecord) => row.employeeName || employeeIdToName.get(String(row.employeeId)) || '',
+      sortAccessor: (row: AttendanceRecord) => {
+        const v: any = row.employeeId as any;
+        const empId = typeof v === 'string' ? v : String(v?._id || v?.id || '');
+        return row.employeeName || employeeIdToName.get(empId) || '';
+      },
       render: (value: string) => (
         <div>
           <div className="font-medium">{value}</div>
@@ -426,7 +449,7 @@ export default function AttendancePage() {
           <SelectContent>
             <SelectItem value="all">All Employees</SelectItem>
             {employeesData?.map((emp: Employee) => (
-              <SelectItem key={(emp.id || (emp as any)._id)} value={emp.name}>
+              <SelectItem key={( (emp as any)._id)} value={emp.name}>
                 {emp.name}
               </SelectItem>
             ))}
@@ -680,7 +703,7 @@ export default function AttendancePage() {
                 <Select 
                   value={editing?.employeeId || ''} 
                   onValueChange={(v) => {
-                    const emp = (employeesData || []).find((e: Employee) => (e.id || (e as any)._id) === v);
+                    const emp = (employeesData || []).find((e: Employee) => ((e as any)._id) === v);
                     setEditing({ ...(editing || {}), employeeId: v, employeeName: emp?.name || '' });
                   }}
                 >
@@ -689,7 +712,7 @@ export default function AttendancePage() {
                   </SelectTrigger>
                   <SelectContent>
                     {employeesData?.map((emp: Employee) => (
-                      <SelectItem key={(emp.id || (emp as any)._id)} value={(emp.id || (emp as any)._id)}>
+                      <SelectItem key={( (emp as any)._id)} value={( (emp as any)._id)}>
                         {emp.name}
                       </SelectItem>
                     ))}
