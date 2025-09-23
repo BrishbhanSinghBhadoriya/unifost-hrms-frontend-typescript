@@ -14,11 +14,13 @@ import {
   FileText,
   Clock,
   Activity,
-  Wallet,
+  
   
   Eye,
+  
 } from 'lucide-react';
-import { useState,  useMemo } from 'react';
+import Link from 'next/link';
+import {   useMemo } from 'react';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -166,10 +168,13 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {userRole === 'hr' ? (
           <>
-            <StatCard title="Total Employees" value={stats.totalEmployees || 0} icon={Users} description="All active employees" accentClassName="bg-blue-100 text-blue-600" />
-            <StatCard title="New Joinees" value={stats.newJoiners || 0} icon={Users} description="This month / quarter" accentClassName="bg-green-100 text-green-600" />
-            <StatCard title="Pending Leaves" value={stats.pendingLeaves || 0} icon={FileText} description="Awaiting approval" accentClassName="bg-amber-100 text-amber-600" />
-            <Card className="rounded-2xl md:col-span-4">
+
+           <Link href="/employees"> <StatCard title="Total Employees" value={stats.totalEmployees || 0} icon={Users} description="All active employees" accentClassName="bg-blue-100 text-blue-600" /> </Link>
+            
+            <StatCard title="New Joinees" value={stats.newJoiners || 0} icon={Users} description="This month" accentClassName="bg-green-100 text-green-600" />
+           <Link href={"/leaves"}> <StatCard title="Pending Leaves" value={stats.pendingLeaves || 0} icon={FileText} description="Awaiting approval" accentClassName="bg-amber-100 text-amber-600" />
+           </Link>
+            <Card className="rounded-2xl md:col-span-4"> 
               <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Today's Attendance</CardTitle></CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -203,13 +208,25 @@ export default function DashboardPage() {
                 <DataTable
                   data={(upcomingLeave?.upcomingLeaves || []) as any[]}
                   columns={[
-
+                  
                     {
                       key: 'employeeId',
                       label: 'Employee ID',
                       sortable: true,
                       sortType: 'string' as const,
-                      sortAccessor: (row: any) => row.employeeId as any,
+                      sortAccessor: (row: any) => {
+                        const v: any = row.employeeId;
+                        if (typeof v === 'string' || typeof v === 'number') return String(v);
+                        if (v && typeof v === 'object') return String(v.employeeId || v.empCode || v._id || v.id || '');
+                        return '';
+                      },
+                      render: (_: any, row: any) => {
+                        const v: any = row.employeeId;
+                        const display = typeof v === 'string' || typeof v === 'number'
+                          ? String(v)
+                          : String(v?.employeeId || v?.empCode || v?._id || v?.id || '');
+                        return <span>{display || '—'}</span>;
+                      }
                     },
         {
           key: 'profilePicture',
@@ -224,7 +241,7 @@ export default function DashboardPage() {
             </Avatar>
           ),
         },
-                    { key: 'employeeName', label: 'Employee', sortable: true },
+                    { key: 'employeeName', label: 'Employee', sortable: true, render: (v: any) => <span>{String(v || '')}</span> },
                     { key: 'leaveType', label: 'Type', sortable: true },
                     { key: 'totalDays', label: 'Days', sortable: true, sortType: 'number' },
         {

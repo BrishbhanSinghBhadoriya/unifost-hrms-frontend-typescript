@@ -43,10 +43,20 @@ api.interceptors.response.use(
       }
     } catch {}
     try {
-      const message = error?.response?.data?.message || error?.message || 'Request failed';
-      // Avoid toasting on cancellations
-      if (!axios.isCancel(error)) {
-        toast.error(message);
+      // Handle network/offline errors: no response from server
+      const isNetworkError = !error?.response && (error?.code === 'ERR_NETWORK' || error?.message === 'Network Error');
+      const isOffline = typeof window !== 'undefined' && navigator && navigator.onLine === false;
+      if ((isNetworkError || isOffline) && typeof window !== 'undefined') {
+        const currentPath = window.location?.pathname || '';
+        if (currentPath !== '/offline') {
+          window.location.href = '/offline';
+        }
+      } else {
+        const message = error?.response?.data?.message || error?.message || 'Request failed';
+        // Avoid toasting on cancellations
+        if (!axios.isCancel(error)) {
+          toast.error(message);
+        }
       }
     } catch {}
     console.error('API Error:', error);

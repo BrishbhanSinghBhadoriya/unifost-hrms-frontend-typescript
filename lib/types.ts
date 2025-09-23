@@ -7,6 +7,7 @@ export interface Employee {
   managerId?: string;
   managerName?: string;
   dateOfBirth?: string;
+  reportingTo?: string;
   empCode: string;
   name: string;
   fatherName:string,
@@ -15,6 +16,7 @@ export interface Employee {
   phone: string;
   role: string;
   department: string;
+  joiningDate:string,
   designation: string;
   status: 'active' | 'inactive' | 'terminated';
   joinedOn: string;

@@ -115,16 +115,7 @@ export default function EmployeesPage() {
   };
 
   const columns = [
-    {
-      key: 'employeeId' as keyof Employee,
-      label: 'Employee ID',
-      sortable: true,
-      sortType: 'string' as const,
-      sortAccessor: (row: Employee) => row.employeeId ,
-      render: (value: string) => (
-        <div>{value}</div>
-      ),
-    },
+    
     {
       key: 'name' as keyof Employee,
       label: 'Employee',
@@ -154,7 +145,7 @@ export default function EmployeesPage() {
       sortable: true,
     },
     {
-      key: 'managerName' as keyof Employee,
+      key: 'reportingTo' as keyof Employee,
       label: 'Manager',
       render: (value: string) => value || 'N/A',
     },
@@ -170,11 +161,22 @@ export default function EmployeesPage() {
         </Badge>
       ),
     },
+
     {
-      key: 'joinedOn' as keyof Employee,
-      label: 'Joined',
-      sortable: true,
-    },
+  key: 'joiningDate' as keyof Employee,
+  label: 'Joined',
+  sortable: true,
+  render: (date: string) => {
+    const formattedDate = new Date(date).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short", // "Aug"
+      year: "numeric",
+    });
+
+    return <span>{formattedDate}</span>;
+  },
+},
+
   ];
 
   const filters = (
@@ -222,12 +224,7 @@ export default function EmployeesPage() {
       >
         <Eye className="h-4 w-4" />
       </Button>
-      <Button size="sm" variant="ghost">
-        <Edit className="h-4 w-4" />
-      </Button>
-      <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      
     </div>
   );
 

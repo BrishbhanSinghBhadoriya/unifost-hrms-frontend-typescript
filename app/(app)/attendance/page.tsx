@@ -470,6 +470,7 @@ export default function AttendancePage() {
           <SelectItem value="absent">Absent</SelectItem>
           <SelectItem value="leave">Leave</SelectItem>
           <SelectItem value="holiday">Holiday</SelectItem>
+          <SelectItem value="half-day">Half Day</SelectItem>
         </SelectContent>
       </Select>
 
