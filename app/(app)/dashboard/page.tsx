@@ -194,6 +194,7 @@ export default function DashboardPage() {
                 <CardTitle>Upcoming Leaves</CardTitle>
                 <CardDescription>Approved and scheduled leaves</CardDescription>
     </div>
+    <Link href={'/leaves'}>
     <button
       className="px-4 py-2 text-sm font-medium rounded-xl 
                  bg-gradient-to-r from-blue-500 to-indigo-500 
@@ -201,7 +202,7 @@ export default function DashboardPage() {
                  hover:scale-105 transition-all duration-300"
     >
       See all
-    </button>
+    </button></Link>
               </CardHeader>
 
               <CardContent>

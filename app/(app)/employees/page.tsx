@@ -94,9 +94,7 @@ export default function EmployeesPage() {
     setPaginationParams(prev => ({ ...prev, limit, page: 1 }));
   };
 
-  const handleSearch = (search: string) => {
-    setPaginationParams(prev => ({ ...prev, search, page: 1 }));
-  };
+  // Client-side search is handled by DataTable internally (like attendance page)
 
   const handleDepartmentFilter = (department: string) => {
     setPaginationParams(prev => ({ 
@@ -115,7 +113,26 @@ export default function EmployeesPage() {
   };
 
   const columns = [
-    
+    {
+      key: 'employeeId',
+      label: 'Employee ID',
+      sortable: true,
+      sortType: 'string' as const,
+      sortAccessor: (row: any) => {
+        const v: any = row.employeeId;
+        if (typeof v === 'string' || typeof v === 'number') return String(v);
+        if (v && typeof v === 'object') return String(v.employeeId || v.empCode || v._id || v.id || '');
+        return '';
+      },
+      render: (_: any, row: any) => {
+        const v: any = row.employeeId;
+        const display = typeof v === 'string' || typeof v === 'number'
+          ? String(v)
+          : String(v?.employeeId || v?.empCode || v?._id || v?.id || '');
+        return <span>{display || '—'}</span>;
+      }
+    },
+
     {
       key: 'name' as keyof Employee,
       label: 'Employee',
@@ -267,7 +284,6 @@ export default function EmployeesPage() {
         data={data?.data ?? (Array.isArray(data) ? data : [])}
         columns={columns}
         searchPlaceholder="Search by name or employee code..."
-        onSearch={handleSearch}
         onRowClick={(employee) => router.push(`/employees/${(employee as any)?._id}`)}
         actions={actions}
         filters={filters}
