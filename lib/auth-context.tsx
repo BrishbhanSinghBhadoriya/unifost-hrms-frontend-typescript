@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authService } from './auth';
 import { User } from './types';
+import { AxiosError } from 'axios';
+
 
 interface AuthContextType {
   user: User | null;
@@ -41,8 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
   };
 

@@ -15,6 +15,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import type { AxiosError } from 'axios';
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -32,12 +33,11 @@ export default function LoginPage() {
       if (success) {
         toast.success("Welcome back!");
         router.push("/dashboard");
-      } else {
-        toast.error("Invalid username or password");
-      }
+      } 
     } catch (error) {
       console.error("💥 Login error:", error);
-      toast.error("An error occurred during login");
+      const axiosErr = error as AxiosError<{ message?: string }>; 
+      toast.error(axiosErr?.response?.data?.message || (error as any)?.message || 'Login failed');
     } finally {
       setIsLoading(false);
     }

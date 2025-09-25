@@ -3,6 +3,7 @@
   import Cookies from "js-cookie";
   import { toast } from 'sonner';
   import {User} from "@/lib/types"
+  import type { AxiosError } from 'axios';
 
 
 
@@ -112,17 +113,37 @@ export const authService = {
       // Do NOT treat login failures (401) as session-expired redirects; just return failure
       console.error('💥 Login API error:', error);
       console.error('💥 Error response:', error.response);
-      return {
+      const axiosErr = error as AxiosError<{ message?: string }>; 
+      toast.error(axiosErr?.response?.data?.message || (error as any)?.message || 'Login failed');      return {
         success: false,
         message: error.response?.data?.message || 'Network error occurred'
       };
     }
   },
 
-  logout(): void {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    try { Cookies.remove('token'); } catch {}
+  async logout(): Promise<void> {
+    try {
+      const token = this.getToken();
+      const logoutResult = await axios.post(
+        'https://unifost-hrms-backend.onrender.com/api/users/logout',
+        {},
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        }
+      );
+      if (logoutResult.status >= 200 && logoutResult.status < 300) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        try { Cookies.remove('token'); } catch {}
+      } else {
+        toast.error('Failed to logout');
+      }
+    } catch (error: any) {
+      const axiosErr = error as AxiosError<{ message?: string }>; 
+      toast.error(axiosErr?.response?.data?.message || (error as any)?.message || 'Logout failed');
+    }
+
+    
   },
 
   getCurrentUser(): User | null {

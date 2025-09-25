@@ -3,6 +3,7 @@
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,10 +32,14 @@ interface TopbarProps {
 
 export function Topbar({ onToggleSidebar, title, breadcrumbs, actions }: TopbarProps) {
   const { user, logout } = useAuth();
+  const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      router.replace('/login');
+    }
   };
 
   return (
