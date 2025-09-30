@@ -121,29 +121,30 @@ export const authService = {
     }
   },
 
-  async logout(): Promise<void> {
+  async logout(): Promise<{ success: boolean; message: string }> {
     try {
-      const token = this.getToken();
-      const logoutResult = await axios.post(
-        'https://unifost-hrms-backend.onrender.com/api/users/logout',
-        {},
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }
-      );
+      const logoutResult = await axios.post(`${BACKEND_URL}users/logout`);
+
       if (logoutResult.status >= 200 && logoutResult.status < 300) {
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        try { Cookies.remove('token'); } catch {}
+        // Local cleanup
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        try { Cookies.remove("token"); } catch {}
+
+        return { success: true, message: "Logged out successfully" };
       } else {
-        toast.error('Failed to logout');
+        return { success: false, message: "Failed to logout" };
       }
     } catch (error: any) {
-      const axiosErr = error as AxiosError<{ message?: string }>; 
-      toast.error(axiosErr?.response?.data?.message || (error as any)?.message || 'Logout failed');
+      const axiosErr = error as AxiosError<{ message?: string }>;
+      return {
+        success: false,
+        message:
+          axiosErr?.response?.data?.message ||
+          (error as any)?.message ||
+          "Logout failed",
+      };
     }
-
-    
   },
 
   getCurrentUser(): User | null {

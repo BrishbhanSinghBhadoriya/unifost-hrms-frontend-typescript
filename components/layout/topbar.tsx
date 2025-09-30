@@ -3,7 +3,6 @@
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +21,9 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react';
+import axios, { AxiosError } from 'axios';
+import Cookies from "js-cookie";
+
 
 interface TopbarProps {
   onToggleSidebar?: () => void;
@@ -32,15 +34,49 @@ interface TopbarProps {
 
 export function Topbar({ onToggleSidebar, title, breadcrumbs, actions }: TopbarProps) {
   const { user, logout } = useAuth();
-  const router = useRouter();
 
-  const handleLogout = async () => {
+  const  handleLogout = async () => {
+    console.log('Logging out...');
     try {
-      await logout();
-    } finally {
-      router.replace('/login');
+      const cookieToken = Cookies.get('token');
+      console.log('Cookie token:', cookieToken);
+      console.log(`Backend URL: ${process.env.NEXT_PUBLIC_BACKEND_URL}`);
+      
+      const logoutResult = await axios.post('https://unifost-hrms-backend.onrender.com/api/users/logout', {},
+        {
+        headers: {  
+          Authorization: `Bearer ${cookieToken}`
+        }
+      });
+      
+
+      console.log('Logout result:', logoutResult);
+
+      if (logoutResult.status >= 200 && logoutResult.status < 300) {
+        // Local cleanup
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        try { Cookies.remove("token"); } catch {}
+        window.location.href = '/login';
+        return { success: true, message: "Logged out successfully" };
+
+        
+      } else {
+        return { success: false, message: "Failed to logout" };
+      }
+    } catch (error: any) {
+      const axiosErr = error as AxiosError<{ message?: string }>;
+      return {
+        success: false,
+        message:
+          axiosErr?.response?.data?.message ||
+          (error as any)?.message ||
+          "Logout failed",
+      };
     }
   };
+
+  
 
   return (
     <header className="border-b bg-gradient-to-r from-background via-secondary to-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
