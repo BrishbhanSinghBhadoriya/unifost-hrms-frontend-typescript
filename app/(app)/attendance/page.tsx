@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { formatDateTimeIST as sharedFormatDateTimeIST } from '@/lib/utils';
 
 
 dayjs.extend(utc);
@@ -248,17 +249,7 @@ export default function AttendancePage() {
     return date;
   };
 
-  const formatDateTimeIST = (date?: string, time?: string) => {
-    if (!time) return '-';
-    const baseDate = dayjs(date).isValid() ? dayjs(date).format('YYYY-MM-DD') : String(date || '').slice(0, 10);
-    let dt;
-    if (time.includes('T') || /GMT\+?0{4}/i.test(time) || dayjs(time).isValid()) {
-      dt = dayjs.utc(time).tz('Asia/Kolkata');
-    } else {
-      dt = dayjs.tz(`${baseDate} ${time}`, 'YYYY-MM-DD HH:mm', 'Asia/Kolkata');
-    }
-    return dt && dt.isValid() ? dt.format('DD MMM YYYY, hh:mm A') : '-';
-  };
+  const formatDateTimeIST = (date?: string, time?: string) => sharedFormatDateTimeIST(date, time, true);
 
   // Build a map of employeeId -> employee for quick lookup
   const employeeIdToName = new Map<string, string>(

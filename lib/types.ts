@@ -72,6 +72,7 @@ export interface LeaveRequest {
   appliedOn: string;
   approvedOn?: string;
   attachmentUrl?: string;
+  createdAt: string;
 }
 
 export interface User {

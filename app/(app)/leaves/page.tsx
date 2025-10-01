@@ -129,7 +129,7 @@ export default function LeavesPage() {
       key: 'appliedOn' as keyof LeaveRequest,
       label: 'Applied On',
       sortable: true,
-      render: (date: string) => dayjs(date).format('MMM DD, YYYY'),
+      render: (_value:any,leave:LeaveRequest) => dayjs(leave.createdAt).format('MMM DD, YYYY'),
     },
     {
       key: 'status' as keyof LeaveRequest,

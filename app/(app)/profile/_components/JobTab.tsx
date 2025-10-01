@@ -3,16 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardTitle, CardHeader } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/auth-context'
-import EditIcon from '@mui/icons-material/Edit'
-import BadgeIcon from '@mui/icons-material/Badge'
-import ApartmentIcon from '@mui/icons-material/Apartment'
-import WorkOutlineIcon from '@mui/icons-material/WorkOutline'
-import HomeWorkIcon from '@mui/icons-material/HomeWork'
-import CategoryIcon from '@mui/icons-material/Category'
-import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount'
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-
-
+import { Pencil } from 'lucide-react'
 const JobTab = () => {
   const { user } = useAuth();
   const Tile = ({

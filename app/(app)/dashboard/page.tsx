@@ -26,6 +26,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import { formatDateTimeIST } from '@/lib/utils';
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
@@ -65,7 +66,7 @@ export default function DashboardPage() {
     queryFn: () => getEmployeesDashboardata(),
     enabled: userRole !== 'hr',
   })
-  console.log(empdashboardData);
+  console.log("foix",empdashboardData);
   const {data:upcomingLeave,isLoading:isupcomingLeave}=useQuery({
    queryKey:['upcommingLeaves'],
    queryFn:()=>getUpcommingLeaves()
@@ -107,8 +108,8 @@ export default function DashboardPage() {
     return 'Good night';
   }, []);
 
-  // Monthly attendance coloring (present/absent)
-  const { presentDates, absentDates } = useMemo(() => {
+  // Monthly attendance coloring (present/absent/halfday)
+  const { presentDates, absentDates, halfDayDates } = useMemo(() => {
     const monthly = (empdashboardData?.data?.monthly?.attendance || empdashboardData?.data?.attendance || []) as any[];
     const present = monthly
       .filter((a) => String(a.status).toLowerCase() === 'present')
@@ -116,7 +117,13 @@ export default function DashboardPage() {
     const absent = monthly
       .filter((a) => String(a.status).toLowerCase() === 'absent')
       .map((a) => new Date(a.date));
-    return { presentDates: present, absentDates: absent };
+    const halfday = monthly
+      .filter((a) => {
+        const s = String(a.status).toLowerCase();
+        return s === 'late' || s === 'halfday' || s === 'half day' || s === 'half_day';
+      })
+      .map((a) => new Date(a.date));
+    return { presentDates: present, absentDates: absent, halfDayDates: halfday };
   }, [empdashboardData]);
 
   return (
@@ -152,7 +159,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className=''>Last login: {user?.lastLogin ? dayjs(user.lastLogin).format('DD MMM YYYY, hh:mm A') : '—'}</div>
-          <div className="hidden sm:flex gap-2">1
+          <div className="hidden sm:flex gap-2">
             <Button variant="outline" onClick={() => router.push('/attendance')}>
               <Clock className="mr-2 h-4 w-4" /> Attendance
             </Button>
@@ -332,7 +339,7 @@ export default function DashboardPage() {
             title="Working Days This Month"
             value={empdashboardData?.data?.monthly?.totalWorkingDays ?? 0}
             icon={Calendar}
-            description={`Present: ${empdashboardData?.data?.monthly?.presentDays ?? 0} • Absent: ${empdashboardData?.data?.monthly?.absentDays ?? 0}`}
+            description={`Present: ${empdashboardData?.data?.monthly?.presentDays ?? 0} • Absent: ${empdashboardData?.data?.monthly?.absentDays ?? 0} • Late: ${empdashboardData?.data?.monthly?.lateDays ?? 0}`}
           />
             <StatCard title="My Pending Leaves" value={employeeStats.pendingLeaves} icon={FileText} description="Awaiting HR approval" />
             <StatCard title="My Approved Leaves" value={employeeStats.approvedLeaves} icon={Activity} description="This year" />
@@ -343,38 +350,57 @@ export default function DashboardPage() {
           <CardHeader>
     <CardTitle>Daily Attendance</CardTitle>
     <CardDescription>
-      Check-in / Check-out for today • {dayjs().format("dddd, DD MMM YYYY")}
+      {empdashboardData?.data?.today.status === "present" ? "Check-in / Check-out for today" : "Status for today"} • {dayjs().format("dddd, DD MMM YYYY")}
     </CardDescription>
           </CardHeader>
           <CardContent>
     <div className="text-sm">
-      {empdashboardData?.data ? (
-        empdashboardData?.data?.today.status === "present" ? (
-          <div className="space-y-2">a
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
-              <span>Present</span>
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Check-in: {empdashboardData?.data?.today?.checkIn ? dayjs.utc(empdashboardData.data.today.checkIn).tz('Asia/Kolkata').format('hh:mm A') : "--"}</span>
-              <span>Check-out: {empdashboardData?.data?.today?.checkOut ? dayjs.utc(empdashboardData.data.today.checkOut).tz('Asia/Kolkata').format('hh:mm A') : "--"}</span>
-                  </div>
-            <div className="text-xs text-muted-foreground">
-              Hours Worked: {empdashboardData?.data?.today.hoursWorked ?? 0}
-                </div>
-              </div>
-            ) : (
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-2 w-2 rounded-full bg-red-500" />
-            <span>Absent (No check-in)</span>
-          </div>
-        )
-      ) : (
-        <div className="flex items-center gap-2">
-          <span className="inline-flex h-2 w-2 rounded-full bg-gray-400" />
-          <span>No data available</span>
-        </div>
-      )}
+    {empdashboardData?.data ? (
+  empdashboardData?.data?.today.status === "present" ? (
+
+<div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
+        <span>Present</span>
+      </div>
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>
+          Check-in:{" "}
+          {empdashboardData?.data?.today?.checkIn
+            ? formatDateTimeIST(undefined, empdashboardData.data.today.checkIn, false)
+            : "--"}
+        </span>
+        <span>
+          Check-out:{" "}
+          {empdashboardData?.data?.today?.checkOut
+            ? formatDateTimeIST(undefined, empdashboardData.data.today.checkOut, false)
+            : "--"}
+        </span>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        Hours Worked: {empdashboardData?.data?.today.hoursWorked ?? 0}
+      </div>
+    </div>
+  ) : empdashboardData?.data?.today.status === "absent" ? (
+    <div className="flex items-center gap-2">
+      <span className="inline-flex h-2 w-2 rounded-full bg-red-500" />
+      <span>Absent</span>
+    </div>
+  ) : empdashboardData?.data?.today.status === "late" ? (
+    // ⏳ Halfday Case
+    <div className="flex items-center gap-2">
+      <span className="inline-flex h-2 w-2 rounded-full bg-yellow-500" />
+      <span>Half Day</span>
+    </div>
+  ) : (
+    <div className="flex items-center gap-2">
+      <span className="inline-flex h-2 w-2 rounded-full bg-gray-400" />
+      <span>No data available</span>
+    </div>
+  )
+) : null}
+
+      
     </div>
           </CardContent>
         </Card>
@@ -408,10 +434,11 @@ export default function DashboardPage() {
                 <CardContent>
                   <MiniCalendar
                     mode="single"
-                    modifiers={{ present: presentDates, absent: absentDates }}
+                    modifiers={{ present: presentDates, absent: absentDates, halfday: halfDayDates }}
                     modifiersClassNames={{
                       present: 'bg-green-500 text-white hover:bg-green-600',
                       absent: 'bg-red-500 text-white hover:bg-red-600',
+                      halfday: 'bg-yellow-500 text-black hover:bg-yellow-600',
                     }}
                     className="rounded-md border w-full"
                   />

@@ -15,6 +15,17 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -30,7 +41,7 @@ import api from '@/lib/api';
 import { toast } from 'sonner';
 import Cookies from "js-cookie";
 import { useQuery } from '@tanstack/react-query';
-import { fetchEmployees, PaginationParams } from '@/components/functions/Employee';
+import { deleteEmployee, fetchEmployees, PaginationParams } from '@/components/functions/Employee';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import {useMutation} from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -64,7 +75,7 @@ export default function EmployeesPage() {
     },
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['employees', paginationParams],
     queryFn: () => fetchEmployees(paginationParams),
     refetchOnMount: 'always',
@@ -83,6 +94,21 @@ export default function EmployeesPage() {
    
       addEmployeeMutation.mutate(data);
     
+  };
+
+  const handleDeleteEmployee = async (employeeId: string) => {
+    try {
+      const res = await deleteEmployee(employeeId);
+      if (res?.success) {
+        toast.success('Employee deleted successfully');
+        await refetch();
+      } else {
+        toast.error(res?.message || 'Failed to delete employee');
+      }
+    } catch (err: any) {
+      const axiosErr = err as AxiosError<{ message?: string }>;
+      toast.error(axiosErr?.response?.data?.message || 'Failed to delete employee');
+    }
   };
 
   // Pagination handlers
@@ -114,7 +140,7 @@ export default function EmployeesPage() {
 
   const columns = [
     {
-      key: 'employeeId',
+      key: 'employeeId' as keyof Employee,
       label: 'Employee ID',
       sortable: true,
       sortType: 'string' as const,
@@ -166,18 +192,7 @@ export default function EmployeesPage() {
       label: 'Manager',
       render: (value: string) => value || 'N/A',
     },
-    {
-      key: 'status' as keyof Employee,
-      label: 'Status',
-      render: (status: string) => (
-        <Badge variant={
-          status === 'active' ? 'default' :
-          status === 'inactive' ? 'secondary' : 'destructive'
-        }>
-          {status}
-        </Badge>
-      ),
-    },
+    
 
     {
   key: 'joiningDate' as keyof Employee,
@@ -241,6 +256,33 @@ export default function EmployeesPage() {
       >
         <Eye className="h-4 w-4" />
       </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-red-600 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this employee? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDeleteEmployee((employee as any)?._id)}>
+              Yes, delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      
       
     </div>
   );
