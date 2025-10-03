@@ -25,6 +25,7 @@ import { EmployeeForm } from '@/components/forms/employee-form';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import { Employee } from '@/lib/types';
 import { mockDepartments } from '@/lib/mock';
+import { useFiltersStore } from '@/store/filters';
 import { UserPlus, Eye, Edit, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -33,7 +34,6 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchEmployees, PaginationParams } from '@/components/functions/Employee';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import {useMutation} from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 
 
 export default function EmployeesPage() {
@@ -50,7 +50,6 @@ export default function EmployeesPage() {
   const addEmployeeMutation = useMutation({
     mutationFn: async (employee: Employee) => {
       const response = await api.post('/users/register', employee);
-      console.log('Employee added successfully', response.data);
       return response.data;
       
     },
@@ -59,18 +58,13 @@ export default function EmployeesPage() {
       setShowAddDialog(false);
     },
     onError: (error) => {
-      const axiosErr = error as AxiosError<{ message?: string }>;
-      toast.error(axiosErr?.response?.data?.message || 'Failed to add employee');
+      toast.error('Failed to add employee');
     },
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['employees', paginationParams],
     queryFn: () => fetchEmployees(paginationParams),
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    staleTime: 0,
-    gcTime: 0,
   });
 
   // Debug logging
@@ -80,9 +74,11 @@ export default function EmployeesPage() {
   
 
   const handleAddEmployee = async (data: any) => {
-   
+    try {
       addEmployeeMutation.mutate(data);
-    
+    } catch (error) {
+      toast.error('Failed to add employee');
+    }
   };
 
   // Pagination handlers
@@ -115,7 +111,6 @@ export default function EmployeesPage() {
   };
 
   const columns = [
-    
     {
       key: 'name' as keyof Employee,
       label: 'Employee',
@@ -145,7 +140,7 @@ export default function EmployeesPage() {
       sortable: true,
     },
     {
-      key: 'reportingTo' as keyof Employee,
+      key: 'managerName' as keyof Employee,
       label: 'Manager',
       render: (value: string) => value || 'N/A',
     },
@@ -161,22 +156,11 @@ export default function EmployeesPage() {
         </Badge>
       ),
     },
-
     {
-  key: 'joiningDate' as keyof Employee,
-  label: 'Joined',
-  sortable: true,
-  render: (date: string) => {
-    const formattedDate = new Date(date).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short", // "Aug"
-      year: "numeric",
-    });
-
-    return <span>{formattedDate}</span>;
-  },
-},
-
+      key: 'joinedOn' as keyof Employee,
+      label: 'Joined',
+      sortable: true,
+    },
   ];
 
   const filters = (
@@ -220,11 +204,16 @@ export default function EmployeesPage() {
       <Button
         size="sm"
         variant="ghost"
-        onClick={() => router.push(`/employees/${(employee as any)?._id}`)}
+        onClick={() => router.push(`/employees/${employee._id ?? employee}`)}
       >
         <Eye className="h-4 w-4" />
       </Button>
-      
+      <Button size="sm" variant="ghost">
+        <Edit className="h-4 w-4" />
+      </Button>
+      <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </div>
   );
 
@@ -268,7 +257,7 @@ export default function EmployeesPage() {
         columns={columns}
         searchPlaceholder="Search by name or employee code..."
         onSearch={handleSearch}
-        onRowClick={(employee) => router.push(`/employees/${(employee as any)?._id}`)}
+        onRowClick={(employee) => router.push(`/employees/${employee}`)}
         actions={actions}
         filters={filters}
       />
