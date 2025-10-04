@@ -36,6 +36,7 @@ import { EmployeeForm } from '@/components/forms/employee-form';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import { Employee } from '@/lib/types';
 import { mockDepartments } from '@/lib/mock';
+import { useFiltersStore } from '@/store/filters';
 import { UserPlus, Eye, Edit, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -44,7 +45,6 @@ import { useQuery } from '@tanstack/react-query';
 import { deleteEmployee, fetchEmployees, PaginationParams } from '@/components/functions/Employee';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import {useMutation} from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 
 
 export default function EmployeesPage() {
@@ -61,13 +61,13 @@ export default function EmployeesPage() {
   const addEmployeeMutation = useMutation({
     mutationFn: async (employee: Employee) => {
       const response = await api.post('/users/register', employee);
-      console.log('Employee added successfully', response.data);
       return response.data;
       
     },
     onSuccess: () => {
       toast.success('Employee added successfully');
       setShowAddDialog(false);
+      refetch(); 
     },
     onError: (error) => {
       const axiosErr = error as AxiosError<{ message?: string }>;
@@ -79,37 +79,40 @@ export default function EmployeesPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['employees', paginationParams],
     queryFn: () => fetchEmployees(paginationParams),
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    staleTime: 0,
-    gcTime: 0,
   });
 
-  // Debug logging
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: deleteEmployee,
+    onSuccess: (res) => {
+      if (res?.success) {
+        toast.success('Employee deleted successfully');
+        refetch(); 
+      } else {
+        toast.error(res?.message || 'Failed to delete employee');
+      }
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'An error occurred while deleting the employee');
+    },
+  });
+
+  
   console.log('Employees data:', data);
   console.log('Pagination params:', paginationParams);
 
   
 
   const handleAddEmployee = async (data: any) => {
-   
+    try {
       addEmployeeMutation.mutate(data);
-    
+    } catch (error) {
+      toast.error('Failed to add employee');
+    }
   };
 
   const handleDeleteEmployee = async (employeeId: string) => {
-    try {
-      const res = await deleteEmployee(employeeId);
-      if (res?.success) {
-        toast.success('Employee deleted successfully');
-        await refetch();
-      } else {
-        toast.error(res?.message || 'Failed to delete employee');
-      }
-    } catch (err: any) {
-      const axiosErr = err as AxiosError<{ message?: string }>;
-      toast.error(axiosErr?.response?.data?.message || 'Failed to delete employee');
-    }
+    if (!employeeId) return;
+    deleteEmployeeMutation.mutate(employeeId);
   };
 
   // Pagination handlers
@@ -121,7 +124,7 @@ export default function EmployeesPage() {
     setPaginationParams(prev => ({ ...prev, limit, page: 1 }));
   };
 
-  // Client-side search is handled by DataTable internally (like attendance page)
+  
 
   const handleDepartmentFilter = (department: string) => {
     setPaginationParams(prev => ({ 
@@ -189,27 +192,17 @@ export default function EmployeesPage() {
       sortable: true,
     },
     {
-      key: 'reportingTo' as keyof Employee,
+      key: 'managerName' as keyof Employee,
       label: 'Manager',
       render: (value: string) => value || 'N/A',
     },
     
 
     {
-  key: 'joiningDate' as keyof Employee,
-  label: 'Joined',
-  sortable: true,
-  render: (date: string) => {
-    const formattedDate = new Date(date).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short", // "Aug"
-      year: "numeric",
-    });
-
-    return <span>{formattedDate}</span>;
-  },
-},
-
+      key: 'joinedOn' as keyof Employee,
+      label: 'Joined',
+      sortable: true,
+    },
   ];
 
   const filters = (
@@ -253,7 +246,7 @@ export default function EmployeesPage() {
       <Button
         size="sm"
         variant="ghost"
-        onClick={() => router.push(`/employees/${(employee as any)?._id}`)}
+        onClick={() => router.push(`/employees/${employee._id ?? employee}`)}
       >
         <Eye className="h-4 w-4" />
       </Button>
@@ -344,7 +337,7 @@ export default function EmployeesPage() {
           onLimitChange={handleLimitChange}
         />
       ) : data?.data && data.data.length > 0 ? (
-        // Fallback pagination if API doesn't return pagination object
+        
         <PaginationControls
           currentPage={paginationParams.page || 1}
           totalPages={Math.ceil(data.data.length / (paginationParams.limit || 10))}
