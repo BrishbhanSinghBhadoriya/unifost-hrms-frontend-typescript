@@ -3,7 +3,7 @@ export interface Employee {
   password:string,
   _id: string;
   employeeId: string;
-
+ id:string;
   managerId?: string;
   managerName?: string;
   dateOfBirth?: string;
@@ -72,6 +72,7 @@ export interface LeaveRequest {
   appliedOn: string;
   approvedOn?: string;
   attachmentUrl?: string;
+  createdAt: string;
 }
 
 export interface User {

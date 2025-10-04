@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import type { AxiosError } from 'axios';
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -32,12 +34,11 @@ export default function LoginPage() {
       if (success) {
         toast.success("Welcome back!");
         router.push("/dashboard");
-      } else {
-        toast.error("Invalid username or password");
-      }
+      } 
     } catch (error) {
       console.error("💥 Login error:", error);
-      toast.error("An error occurred during login");
+      const axiosErr = error as AxiosError<{ message?: string }>; 
+      toast.error(axiosErr?.response?.data?.message || (error as any)?.message || 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +90,14 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+            <div className="flex items-center justify-end px-1">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Forgot Password?
+              </Link>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

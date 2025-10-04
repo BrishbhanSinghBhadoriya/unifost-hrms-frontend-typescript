@@ -25,9 +25,12 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import { formatDateTimeIST } from '@/lib/utils';
 
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
+dayjs.extend(timezone);
 import { useQuery } from '@tanstack/react-query';
 import getDashboardData,{getEmployeesDashboardata} from '@/components/functions/getDashboardData';
 import { getUpcommingLeaves } from '@/components/functions/getUpcommingLeaves';
@@ -63,7 +66,7 @@ export default function DashboardPage() {
     queryFn: () => getEmployeesDashboardata(),
     enabled: userRole !== 'hr',
   })
-  console.log(empdashboardData);
+  console.log("foix",empdashboardData);
   const {data:upcomingLeave,isLoading:isupcomingLeave}=useQuery({
    queryKey:['upcommingLeaves'],
    queryFn:()=>getUpcommingLeaves()
@@ -105,8 +108,8 @@ export default function DashboardPage() {
     return 'Good night';
   }, []);
 
-  // Monthly attendance coloring (present/absent)
-  const { presentDates, absentDates } = useMemo(() => {
+  // Monthly attendance coloring (present/absent/halfday)
+  const { presentDates, absentDates, halfDayDates } = useMemo(() => {
     const monthly = (empdashboardData?.data?.monthly?.attendance || empdashboardData?.data?.attendance || []) as any[];
     const present = monthly
       .filter((a) => String(a.status).toLowerCase() === 'present')
@@ -114,7 +117,13 @@ export default function DashboardPage() {
     const absent = monthly
       .filter((a) => String(a.status).toLowerCase() === 'absent')
       .map((a) => new Date(a.date));
-    return { presentDates: present, absentDates: absent };
+    const halfday = monthly
+      .filter((a) => {
+        const s = String(a.status).toLowerCase();
+        return s === 'late' || s === 'halfday' || s === 'half day' || s === 'half_day';
+      })
+      .map((a) => new Date(a.date));
+    return { presentDates: present, absentDates: absent, halfDayDates: halfday };
   }, [empdashboardData]);
 
   return (
@@ -176,7 +185,7 @@ export default function DashboardPage() {
            </Link>
             <Card className="rounded-2xl md:col-span-4"> 
               <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Today's Attendance</CardTitle></CardHeader>
-              <CardContent>
+          <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Present</p><p className="text-lg font-semibold">{attendance.present ?? '—'}</p></div>
                   <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Absent</p><p className="text-lg font-semibold">{attendance.absent ?? '—'}</p></div>
@@ -184,8 +193,8 @@ export default function DashboardPage() {
                   <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">On Leave</p><p className="text-lg font-semibold">{(attendance.onLeave ?? 0) as any}</p></div>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">{dayjs(Date.now()).format('DD/MM/YYYY')}</p>
-              </CardContent>
-            </Card>
+          </CardContent>
+        </Card>
 
             {/* Upcoming Leaves Table */}
             <Card className="rounded-2xl md:col-span-4">
@@ -194,6 +203,7 @@ export default function DashboardPage() {
                 <CardTitle>Upcoming Leaves</CardTitle>
                 <CardDescription>Approved and scheduled leaves</CardDescription>
     </div>
+    <Link href={'/leaves'}>
     <button
       className="px-4 py-2 text-sm font-medium rounded-xl 
                  bg-gradient-to-r from-blue-500 to-indigo-500 
@@ -201,10 +211,10 @@ export default function DashboardPage() {
                  hover:scale-105 transition-all duration-300"
     >
       See all
-    </button>
-              </CardHeader>
+    </button></Link>
+          </CardHeader>
 
-              <CardContent>
+          <CardContent>
                 <DataTable
                   data={(upcomingLeave?.upcomingLeaves || []) as any[]}
                   columns={[
@@ -279,15 +289,15 @@ export default function DashboardPage() {
                   searchPlaceholder="Search leaves..."
                   initialPageSize={5}
                 />
-              </CardContent>
-            </Card>
+          </CardContent>
+        </Card>
 
             <Card className="rounded-2xl md:col-span-4">
               <CardHeader>
                 <CardTitle>Birthdays</CardTitle>
                 <CardDescription>Employees with birthdays</CardDescription>
-              </CardHeader>
-              <CardContent>
+          </CardHeader>
+          <CardContent>
                 <DataTable
                   data={birthday as any[]}
                   columns={[
@@ -320,8 +330,8 @@ export default function DashboardPage() {
                   searchPlaceholder="Search birthdays..."
                   initialPageSize={5}
                 />
-              </CardContent>
-            </Card>
+          </CardContent>
+        </Card>
           </>
         ) : (
           <>
@@ -329,7 +339,7 @@ export default function DashboardPage() {
             title="Working Days This Month"
             value={empdashboardData?.data?.monthly?.totalWorkingDays ?? 0}
             icon={Calendar}
-            description={`Present: ${empdashboardData?.data?.monthly?.presentDays ?? 0} • Absent: ${empdashboardData?.data?.monthly?.absentDays ?? 0}`}
+            description={`Present: ${empdashboardData?.data?.monthly?.presentDays ?? 0} • Absent: ${empdashboardData?.data?.monthly?.absentDays ?? 0} • Late: ${empdashboardData?.data?.monthly?.lateDays ?? 0}`}
           />
             <StatCard title="My Pending Leaves" value={employeeStats.pendingLeaves} icon={FileText} description="Awaiting HR approval" />
             <StatCard title="My Approved Leaves" value={employeeStats.approvedLeaves} icon={Activity} description="This year" />
@@ -337,52 +347,71 @@ export default function DashboardPage() {
             
             {/* Daily Attendance (employee) */}
             <Card className="rounded-2xl md:col-span-4">
-  <CardHeader>
+          <CardHeader>
     <CardTitle>Daily Attendance</CardTitle>
     <CardDescription>
-      Check-in / Check-out for today • {dayjs().format("dddd, DD MMM YYYY")}
+      {empdashboardData?.data?.today.status === "present" ? "Check-in / Check-out for today" : "Status for today"} • {dayjs().format("dddd, DD MMM YYYY")}
     </CardDescription>
-  </CardHeader>
-  <CardContent>
+          </CardHeader>
+          <CardContent>
     <div className="text-sm">
-      {empdashboardData?.data ? (
-        empdashboardData?.data?.today.status === "present" ? (
-          <div className="space-y-2">a
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
-              <span>Present</span>
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Check-in: {empdashboardData?.data?.today?.checkIn ? dayjs.utc(empdashboardData.data.today.checkIn).format('hh:mm A') : "--"}</span>
-              <span>Check-out: {empdashboardData?.data?.today?.checkOut ? dayjs.utc(empdashboardData.data.today.checkOut).format('hh:mm A') : "--"}</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Hours Worked: {empdashboardData?.data?.today.hoursWorked ?? 0}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-2 w-2 rounded-full bg-red-500" />
-            <span>Absent (No check-in)</span>
-          </div>
-        )
-      ) : (
-        <div className="flex items-center gap-2">
-          <span className="inline-flex h-2 w-2 rounded-full bg-gray-400" />
-          <span>No data available</span>
-        </div>
-      )}
+    {empdashboardData?.data ? (
+  empdashboardData?.data?.today.status === "present" ? (
+
+<div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
+        <span>Present</span>
+      </div>
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>
+          Check-in:{" "}
+          {empdashboardData?.data?.today?.checkIn
+            ? formatDateTimeIST(undefined, empdashboardData.data.today.checkIn, false)
+            : "--"}
+        </span>
+        <span>
+          Check-out:{" "}
+          {empdashboardData?.data?.today?.checkOut
+            ? formatDateTimeIST(undefined, empdashboardData.data.today.checkOut, false)
+            : "--"}
+        </span>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        Hours Worked: {empdashboardData?.data?.today.hoursWorked ?? 0}
+      </div>
     </div>
-  </CardContent>
-</Card>
+  ) : empdashboardData?.data?.today.status === "absent" ? (
+    <div className="flex items-center gap-2">
+      <span className="inline-flex h-2 w-2 rounded-full bg-red-500" />
+      <span>Absent</span>
+    </div>
+  ) : empdashboardData?.data?.today.status === "late" ? (
+    // ⏳ Halfday Case
+    <div className="flex items-center gap-2">
+      <span className="inline-flex h-2 w-2 rounded-full bg-yellow-500" />
+      <span>Half Day</span>
+    </div>
+  ) : (
+    <div className="flex items-center gap-2">
+      <span className="inline-flex h-2 w-2 rounded-full bg-gray-400" />
+      <span>No data available</span>
+    </div>
+  )
+) : null}
+
+      
+    </div>
+          </CardContent>
+        </Card>
 
             {/* Announcements / Notices */}
             <Card className="rounded-2xl md:col-span-4">
-              <CardHeader>
+          <CardHeader>
                 <CardTitle>Announcements / Notices</CardTitle>
                 <CardDescription>HR announcements, company events, holidays</CardDescription>
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
                 <div className="space-y-3 text-sm">
                   <div>
                     <p className="font-medium">HR Announcements</p>
@@ -391,7 +420,7 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-medium">Upcoming Leaves</p>
                     <p className="text-muted-foreground">{(upcomingLeave?.upcomingLeaves?.length || 0)} scheduled leaves</p>
-                  </div>
+                </div>
                 </div>
               </CardContent>
             </Card>
@@ -405,29 +434,30 @@ export default function DashboardPage() {
                 <CardContent>
                   <MiniCalendar
                     mode="single"
-                    modifiers={{ present: presentDates, absent: absentDates }}
+                    modifiers={{ present: presentDates, absent: absentDates, halfday: halfDayDates }}
                     modifiersClassNames={{
                       present: 'bg-green-500 text-white hover:bg-green-600',
                       absent: 'bg-red-500 text-white hover:bg-red-600',
+                      halfday: 'bg-yellow-500 text-black hover:bg-yellow-600',
                     }}
                     className="rounded-md border w-full"
                   />
-                </CardContent>
-              </Card>
+            </CardContent>
+          </Card>
               <Card>
                 <CardHeader>
                   <CardTitle>Leave Balance</CardTitle>
                   <CardDescription>Casual, Sick, Earned</CardDescription>
-                </CardHeader>
-                <CardContent>
+            </CardHeader>
+            <CardContent>
                   <div className="space-y-3 text-sm">
                     <div className="flex items-center justify-between"><span>Casual</span><span className="font-medium">—</span></div>
                     <div className="flex items-center justify-between"><span>Sick</span><span className="font-medium">—</span></div>
                     <div className="flex items-center justify-between"><span>Earned</span><span className="font-medium">—</span></div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
             
           </>

@@ -15,6 +15,17 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -31,7 +42,7 @@ import api from '@/lib/api';
 import { toast } from 'sonner';
 import Cookies from "js-cookie";
 import { useQuery } from '@tanstack/react-query';
-import { fetchEmployees, PaginationParams } from '@/components/functions/Employee';
+import { deleteEmployee, fetchEmployees, PaginationParams } from '@/components/functions/Employee';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import {useMutation} from '@tanstack/react-query';
 
@@ -56,18 +67,34 @@ export default function EmployeesPage() {
     onSuccess: () => {
       toast.success('Employee added successfully');
       setShowAddDialog(false);
+      refetch(); 
     },
     onError: (error) => {
       toast.error('Failed to add employee');
     },
   });
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['employees', paginationParams],
     queryFn: () => fetchEmployees(paginationParams),
   });
 
-  // Debug logging
+  const deleteEmployeeMutation = useMutation({
+    mutationFn: deleteEmployee,
+    onSuccess: (res) => {
+      if (res?.success) {
+        toast.success('Employee deleted successfully');
+        refetch(); 
+      } else {
+        toast.error(res?.message || 'Failed to delete employee');
+      }
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'An error occurred while deleting the employee');
+    },
+  });
+
+  
   console.log('Employees data:', data);
   console.log('Pagination params:', paginationParams);
 
@@ -81,6 +108,11 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleDeleteEmployee = async (employeeId: string) => {
+    if (!employeeId) return;
+    deleteEmployeeMutation.mutate(employeeId);
+  };
+
   // Pagination handlers
   const handlePageChange = (page: number) => {
     setPaginationParams(prev => ({ ...prev, page }));
@@ -90,9 +122,7 @@ export default function EmployeesPage() {
     setPaginationParams(prev => ({ ...prev, limit, page: 1 }));
   };
 
-  const handleSearch = (search: string) => {
-    setPaginationParams(prev => ({ ...prev, search, page: 1 }));
-  };
+  
 
   const handleDepartmentFilter = (department: string) => {
     setPaginationParams(prev => ({ 
@@ -111,6 +141,26 @@ export default function EmployeesPage() {
   };
 
   const columns = [
+    {
+      key: 'employeeId' as keyof Employee,
+      label: 'Employee ID',
+      sortable: true,
+      sortType: 'string' as const,
+      sortAccessor: (row: any) => {
+        const v: any = row.employeeId;
+        if (typeof v === 'string' || typeof v === 'number') return String(v);
+        if (v && typeof v === 'object') return String(v.employeeId || v.empCode || v._id || v.id || '');
+        return '';
+      },
+      render: (_: any, row: any) => {
+        const v: any = row.employeeId;
+        const display = typeof v === 'string' || typeof v === 'number'
+          ? String(v)
+          : String(v?.employeeId || v?.empCode || v?._id || v?.id || '');
+        return <span>{display || '—'}</span>;
+      }
+    },
+
     {
       key: 'name' as keyof Employee,
       label: 'Employee',
@@ -144,18 +194,8 @@ export default function EmployeesPage() {
       label: 'Manager',
       render: (value: string) => value || 'N/A',
     },
-    {
-      key: 'status' as keyof Employee,
-      label: 'Status',
-      render: (status: string) => (
-        <Badge variant={
-          status === 'active' ? 'default' :
-          status === 'inactive' ? 'secondary' : 'destructive'
-        }>
-          {status}
-        </Badge>
-      ),
-    },
+    
+
     {
       key: 'joinedOn' as keyof Employee,
       label: 'Joined',
@@ -208,12 +248,34 @@ export default function EmployeesPage() {
       >
         <Eye className="h-4 w-4" />
       </Button>
-      <Button size="sm" variant="ghost">
-        <Edit className="h-4 w-4" />
-      </Button>
-      <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-red-600 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this employee? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDeleteEmployee((employee as any)?._id)}>
+              Yes, delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      
+      
     </div>
   );
 
@@ -256,8 +318,7 @@ export default function EmployeesPage() {
         data={data?.data ?? (Array.isArray(data) ? data : [])}
         columns={columns}
         searchPlaceholder="Search by name or employee code..."
-        onSearch={handleSearch}
-        onRowClick={(employee) => router.push(`/employees/${employee}`)}
+        onRowClick={(employee) => router.push(`/employees/${(employee as any)?._id}`)}
         actions={actions}
         filters={filters}
       />
@@ -274,7 +335,7 @@ export default function EmployeesPage() {
           onLimitChange={handleLimitChange}
         />
       ) : data?.data && data.data.length > 0 ? (
-        // Fallback pagination if API doesn't return pagination object
+        
         <PaginationControls
           currentPage={paginationParams.page || 1}
           totalPages={Math.ceil(data.data.length / (paginationParams.limit || 10))}

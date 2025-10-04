@@ -3,6 +3,7 @@
   import Cookies from "js-cookie";
   import { toast } from 'sonner';
   import {User} from "@/lib/types"
+  import type { AxiosError } from 'axios';
 
 
 
@@ -112,17 +113,38 @@ export const authService = {
       // Do NOT treat login failures (401) as session-expired redirects; just return failure
       console.error('💥 Login API error:', error);
       console.error('💥 Error response:', error.response);
-      return {
+      const axiosErr = error as AxiosError<{ message?: string }>; 
+      toast.error(axiosErr?.response?.data?.message || (error as any)?.message || 'Login failed');      return {
         success: false,
         message: error.response?.data?.message || 'Network error occurred'
       };
     }
   },
 
-  logout(): void {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    try { Cookies.remove('token'); } catch {}
+  async logout(): Promise<{ success: boolean; message: string }> {
+    try {
+      const logoutResult = await axios.post(`${BACKEND_URL}users/logout`);
+
+      if (logoutResult.status >= 200 && logoutResult.status < 300) {
+        // Local cleanup
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        try { Cookies.remove("token"); } catch {}
+
+        return { success: true, message: "Logged out successfully" };
+      } else {
+        return { success: false, message: "Failed to logout" };
+      }
+    } catch (error: any) {
+      const axiosErr = error as AxiosError<{ message?: string }>;
+      return {
+        success: false,
+        message:
+          axiosErr?.response?.data?.message ||
+          (error as any)?.message ||
+          "Logout failed",
+      };
+    }
   },
 
   getCurrentUser(): User | null {
