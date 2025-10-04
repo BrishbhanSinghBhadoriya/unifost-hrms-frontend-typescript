@@ -25,22 +25,38 @@ export default function EmployeeProfilePage() {
   const [scopedUser, setScopedUser] = useState<any>(null);
 
   const getEmployeeById = async (id: string): Promise<any | null> => {
-    const response = await api.get(`/hr/getEmployee/${id}`);
-    const list = response.data?.data;
-    if (Array.isArray(list)) {
-      const match = list.find((e: any) => String(e?._id ?? e?.id) === String(id));
-      return match || list[0] || null;
+    try {
+      console.log('Fetching employee with ID:', id);
+      const response = await api.get(`/users/employee/${id}`);
+      console.log('Employee API response:', response);
+      
+      const employee = response.data?.user || response.data?.data || response.data;
+      if (employee) {
+        return employee;
+      }
+      
+      // Fallback: try to get from list
+      const list = response.data?.data;
+      if (Array.isArray(list)) {
+        const match = list.find((e: any) => String(e?._id ?? e?.id) === String(id));
+        return match || list[0] || null;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching employee:', error);
+      throw error;
     }
-    return null;
   };
 
-  const { data: employee, isLoading } = useQuery({
+  const { data: employee, isLoading, error } = useQuery({
     queryKey: ['employee', id],
     queryFn: () => getEmployeeById(id),
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     staleTime: 0,
     gcTime: 0,
+    retry: 1,
   });
 
   // Scope the employee into a local auth context that does NOT persist or touch global auth
@@ -48,13 +64,48 @@ export default function EmployeeProfilePage() {
     if (employee) setScopedUser(employee);
   }, [employee]);
 
-  if (isLoading || !employee) {
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-24 bg-muted rounded" />
           <div className="h-6 bg-muted rounded w-1/3" />
           <div className="h-6 bg-muted rounded w-1/2" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold text-red-600">Error Loading Employee</h2>
+          <p className="text-muted-foreground">
+            {error?.message || 'Failed to load employee data'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Employee ID: {id}
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!employee) {
+    return (
+      <div className="p-6">
+        <div className="text-center space-y-4">
+          <h2 className="text-2xl font-bold">Employee Not Found</h2>
+          <p className="text-muted-foreground">
+            No employee found with ID: {id}
+          </p>
         </div>
       </div>
     );

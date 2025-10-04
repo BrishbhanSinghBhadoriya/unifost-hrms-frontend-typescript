@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Building,
   Bell,
+  Key,
 } from 'lucide-react';
 
 const navigation = [
@@ -25,6 +26,8 @@ const navigation = [
   { name: 'Profile', href: '/profile', icon: User, roles: ['employee', 'manager', 'hr', 'admin'] },
   { name: 'Admin', href: '/admin', icon: Settings, roles: ['hr', 'admin'] },
   {name:'Announcements', href: '/announcements', icon: Bell, roles: ['manager', 'hr', 'admin'] },
+  {name:"Reset Employee Password",href:'/reset-emp-password',icon: Key , roles:['hr']}
+
 ];
 
 interface SidebarProps {

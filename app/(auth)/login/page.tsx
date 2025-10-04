@@ -16,6 +16,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { ForgotPasswordModal } from "@/components/modals/forgot-password-modal";
 import type { AxiosError } from 'axios';
 
 export default function LoginPage() {
@@ -92,12 +93,11 @@ export default function LoginPage() {
               />
             </div>
             <div className="flex items-center justify-end px-1">
-              <Link
-                href="/forgot-password"
-                className="text-sm font-medium text-primary hover:underline"
-              >
-                Forgot Password?
-              </Link>
+              <ForgotPasswordModal>
+                <Button variant="link" className="p-0 h-auto text-sm font-medium text-primary hover:underline">
+                  Forgot Password?
+                </Button>
+              </ForgotPasswordModal>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -376,6 +376,192 @@ export const authService = {
         message: error.response?.data?.message || 'Failed to fetch user data'
       };
     }
+  },
+
+  async submitForgotPasswordRequest(data: {
+    name: string;
+    email: string;
+    role: string;
+    department: string;
+    designation: string;
+  }): Promise<{ success: boolean; message?: string; data?: any }> {
+    try {
+      const response = await axios.post(`${BACKEND_URL}users/sendforgetPasswordRequest`, data);
+
+      if (response.status >= 200 && response.status < 300) {
+        return {
+          success: true,
+          message: response.data?.message || 'Request submitted successfully',
+          data: response.data
+        };
+      }
+
+      return { 
+        success: false, 
+        message: response.data?.message || 'Failed to submit request' 
+      };
+    } catch (error: any) {
+      console.error('💥 Forgot password request error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to submit password reset request'
+      };
+    }
+  },
+
+  async getForgotPasswordRequests(): Promise<{ success: boolean; data?: any[]; message?: string }> {
+    try {
+      const token = this.getToken();
+      if (!token) {
+        return { success: false, message: 'No authentication token found' };
+      }
+
+      const response = await axios.get(`${BACKEND_URL}hr/getforgetPasswordRequest`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.status >= 200 && response.status < 300) {
+        return {
+          success: true,
+          data: response.data?.forgetPasswordRequest || [],
+          message: response.data?.message || 'Requests fetched successfully'
+        };
+      }
+
+      return { 
+        success: false, 
+        message: response.data?.message || 'Failed to fetch requests' 
+      };
+    } catch (error: any) {
+      if (this.isTokenExpiredError(error)) {
+        this.handleSessionExpired(error?.response?.data?.message);
+      }
+      console.error('💥 Get forgot password requests error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch password reset requests'
+      };
+    }
+  },
+
+  async deleteForgotPasswordRequest(requestId: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const token = this.getToken();
+      if (!token) {
+        return { success: false, message: 'No authentication token found' };
+      }
+
+      const response = await axios.delete(`${BACKEND_URL}users/forgetPasswordRequest/${requestId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.status >= 200 && response.status < 300) {
+        return {
+          success: true,
+          message: response.data?.message || 'Request deleted successfully'
+        };
+      }
+
+      return { 
+        success: false, 
+        message: response.data?.message || 'Failed to delete request' 
+      };
+    } catch (error: any) {
+      if (this.isTokenExpiredError(error)) {
+        this.handleSessionExpired(error?.response?.data?.message);
+      }
+      console.error('💥 Delete forgot password request error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to delete password reset request'
+      };
+    }
+  },
+
+  async resetEmployeePassword(userId: string, password: string): Promise<{ success: boolean; message?: string; data?: any }> {
+    try {
+      const token = this.getToken();
+      if (!token) {
+        return { success: false, message: 'No authentication token found' };
+      }
+
+      const response = await axios.put(`${BACKEND_URL}hr/reset-password/${userId}`, 
+        { password },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.status >= 200 && response.status < 300) {
+        return {
+          success: true,
+          message: response.data?.message || 'Password reset successfully',
+          data: response.data
+        };
+      }
+
+      return { 
+        success: false, 
+        message: response.data?.message || 'Failed to reset password' 
+      };
+    } catch (error: any) {
+      if (this.isTokenExpiredError(error)) {
+        this.handleSessionExpired(error?.response?.data?.message);
+      }
+      console.error('💥 Reset password error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to reset password'
+      };
+    }
+  },
+
+  async checkEmailExists(email: string): Promise<{ success: boolean; exists: boolean; user?: any; message?: string }> {
+    try {
+      const response = await axios.post(`${BACKEND_URL}users/checkEmailExist`, { email });
+
+      if (response.status === 200) {
+        return {
+          success: true,
+          exists: true,
+          user: response.data?.user,
+          message: response.data?.message || 'Email exists'
+        };
+      } else if (response.status === 404) {
+        return {
+          success: true,
+          exists: false,
+          message: response.data?.message || 'Email not found'
+        };
+      }
+
+      return { 
+        success: false, 
+        exists: false,
+        message: response.data?.message || 'Failed to check email' 
+      };
+    } catch (error: any) {
+      console.error('💥 Check email error:', error);
+      if (error.response?.status === 404) {
+        return {
+          success: true,
+          exists: false,
+          message: 'Email not found'
+        };
+      }
+      return {
+        success: false,
+        exists: false,
+        message: error.response?.data?.message || 'Failed to check email'
+      };
+    }
   }
   
 };
