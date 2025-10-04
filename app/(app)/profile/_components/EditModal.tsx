@@ -78,6 +78,7 @@ const bankSchema = z.object({
   bankAccountType: z.string().optional(),
   bankIFSC: z.string().min(1, 'IFSC is required'),
   bankAccountHolderName: z.string().min(1, 'Account holder name is required'),
+  bankMICR: z.string().optional(),
 });
 const skillsSchema = z.object({ skills: z.string().optional() });
 const addressSchema = z.object({
@@ -86,6 +87,7 @@ const addressSchema = z.object({
   state: z.string().optional(),
   zip: z.string().optional(),
     country: z.string().optional(),
+    bankMICR: z.string().optional(),
   });
 
 const documentsSchema = z.object({
@@ -98,6 +100,7 @@ const documentsSchema = z.object({
   MarksheetImage_12: z.string().optional(),
   MarksheetImage_Graduation: z.string().optional(),
   MarksheetImage_PostGraduationImage: z.string().optional(),
+  bankMICR: z.string().optional(),
 });
   const toYMD = (d?: string) => {
     if (!d) return '';
@@ -106,6 +109,7 @@ const documentsSchema = z.object({
     const m = `${date.getMonth() + 1}`.padStart(2, '0');
     const day = `${date.getDate()}`.padStart(2, '0');
     return `${date.getFullYear()}-${m}-${day}`;
+
   };
 
 const personalForm = useForm({
@@ -153,7 +157,7 @@ const educationForm = useForm({
 });
 const bankForm = useForm({
   resolver: zodResolver(bankSchema),
-  defaultValues: { bankName: '', bankAccountNumber: '', bankAccountType: 'savings', bankIFSC: '', bankAccountHolderName: '' },
+  defaultValues: { bankName: '', bankAccountNumber: '', bankAccountType: 'savings', bankIFSC: '', bankAccountHolderName: '', bankMICR: '' },
 });
 const skillsForm = useForm({
   resolver: zodResolver(skillsSchema),
@@ -520,7 +524,7 @@ return (
             <Input id="modal_name" {...personalForm.register('name')} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="modal_fname">Father's Name</Label>
+            <Label htmlFor="modal_fname">Father/Spouse/Guardian Name</Label>
             <Input id="modal_fname" {...personalForm.register('fatherName')} />
           </div>
           <div className="space-y-2">
@@ -853,6 +857,13 @@ return (
         {bankForm.formState.errors.bankIFSC && (
           <p className="text-xs text-red-500">{String(bankForm.formState.errors.bankIFSC.message || '')}</p>
         )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bank_micr">Bank MICR *</Label>
+            <Input id="bank_micr" {...bankForm.register('bankMICR')} />
+            {bankForm.formState.errors.bankMICR && (
+              <p className="text-xs text-red-500">{String(bankForm.formState.errors.bankMICR.message || '')}</p>
+            )}
           </div>
         </form>
       </EditModal>

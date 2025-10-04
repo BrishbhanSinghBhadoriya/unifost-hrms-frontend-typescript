@@ -71,6 +71,7 @@ export default function EmployeesPage() {
     },
     onError: (error) => {
       const axiosErr = error as AxiosError<{ message?: string }>;
+      console.log(axiosErr);
       toast.error(axiosErr?.response?.data?.message || 'Failed to add employee');
     },
   });

@@ -138,6 +138,7 @@ export interface User {
     bankAccountType: "savings" | "current";
     bankIFSC: string;
     bankAccountHolderName: string;
+    bankMICR: string;
   }[];
 
   // Work Details

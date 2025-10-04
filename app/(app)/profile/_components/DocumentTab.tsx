@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardTitle, CardHeader } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -26,29 +26,8 @@ const DocumentTab = () => {
   
   const documents = (user as any)?.documents || {};
   
-  console.log((user as any)?._id)
-  // Refresh user data on component mount to ensure we have latest documents
-  useEffect(() => {
-    const refreshUserData = async () => {
-      const targetId = (user as any)?._id || user?.id;
-      if (targetId) {
-        try {
-          console.log('🔄 Refreshing user data for documents...');
-          const result = await authService.fetchUserData(targetId as string);
-          console.log('🔄 Refresh result:', result);
-          if (result.success && result.user) {
-            console.log('🔄 Updating user with fresh data:', result.user);
-            updateUser(result.user);
-          }
-        } catch (error) {
-          console.error('🔄 Failed to refresh user data:', error);
-        }
-      }
-    };
-
-    // Always refresh on mount to get latest data
-    refreshUserData();
-  }, [user?._id, user?.id, updateUser]);
+  console.log('User ID:', (user as any)?._id || user?.id)
+  // Removed automatic user data refresh to prevent unnecessary API calls
   
   const documentFields = [
     {
@@ -108,14 +87,58 @@ const DocumentTab = () => {
 
   
 
-  const handleDownloadDocument = (documentUrl: string, filename: string) => {
-    if (documentUrl) {
+  const handleDownloadDocument = async (documentUrl: string, filename: string) => {
+    if (!documentUrl) {
+      toast.error('Document URL not found');
+      return;
+    }
+
+    try {
+      // First try direct download
       const link = document.createElement('a');
       link.href = documentUrl;
       link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      // If direct download fails, try fetch approach
+      setTimeout(async () => {
+        try {
+          const response = await fetch(documentUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${authService.getToken()}`
+            }
+          });
+          
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+          } else {
+            // Fallback: open in new tab
+            window.open(documentUrl, '_blank');
+          }
+        } catch (error) {
+          console.error('Download error:', error);
+          // Final fallback: open in new tab
+          window.open(documentUrl, '_blank');
+        }
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download document. Opening in new tab...');
+      window.open(documentUrl, '_blank');
     }
   };
 
@@ -135,7 +158,7 @@ const DocumentTab = () => {
       return;
     }
 
-    if (!user?._id) {
+    if (!(user as any)?._id && !user?.id) {
       toast.error('User not found');
       return;
     }
@@ -143,7 +166,7 @@ const DocumentTab = () => {
     setUploadingFiles(prev => new Set(prev).add(documentKey));
     
     try {
-      const result = await authService.uploadDocument(user._id, documentKey, file);
+      const result = await authService.uploadDocument(((user as any)?._id || user?.id) as string, documentKey, file);
       
       if (result.success) {
         // Update user state with the new document URL
@@ -423,12 +446,27 @@ const DocumentTab = () => {
                                     alt={doc.label}
                                     className="max-w-full max-h-[60vh] object-contain rounded-lg"
                                   />
+                                ) : documentUrl.match(/\.pdf$/i) || documentUrl.includes('pdf') ? (
+                                  <div className="w-full h-[60vh] rounded-lg border">
+                                    <iframe 
+                                      src={`https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`}
+                                      className="w-full h-full rounded-lg"
+                                      title={doc.label}
+                                    />
+                                    <div className="mt-2 text-center">
+                                      <p className="text-xs text-muted-foreground">
+                                        If PDF doesn't load, try downloading the file
+                                      </p>
+                                    </div>
+                                  </div>
                                 ) : (
-                                  <iframe 
-                                    src={documentUrl} 
-                                    className="w-full h-[60vh] rounded-lg"
-                                    title={doc.label}
-                                  />
+                                  <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
+                                    <div className="text-center">
+                                      <DescriptionIcon sx={{ fontSize: 48, marginBottom: 2 }} />
+                                      <p>Preview not available for this file type</p>
+                                      <p className="text-sm">Click download to view the file</p>
+                                    </div>
+                                  </div>
                                 )}
                               </div>
                             </DialogContent>

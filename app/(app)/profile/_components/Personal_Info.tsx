@@ -85,7 +85,7 @@ console.log(user)
 
             <Tile
               icon={<ManIcon sx={{ fontSize: 18, color: '#16a34a' }} />}
-              label="Father Name"
+              label="Father/Spouse/Guardian Name"
               value={get(user?.fatherName)}
               color="#dcfce7"
             />

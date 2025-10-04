@@ -308,7 +308,7 @@ export const authService = {
         return { success: false, message: 'No authentication token found' };
       }
 
-      const response = await axios.get(`${BACKEND_URL}/api/users/employee/${userId}`, {
+      const response = await axios.get(`${BACKEND_URL}users/employee/${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

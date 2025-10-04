@@ -83,6 +83,7 @@ const BankdetailsTab = () => {
                   <div className="text-sm">Account Number: {bd.bankAccountNumber}</div>
                   <div className="text-sm">Account Type: {capitalizeFirst(bd.bankAccountType)}</div>
                   <div className="text-sm">IFSC: {bd.bankIFSC}</div>
+                  <div className="text-sm">Bank MICR: {capitalizeFirst(bd.bankMICR)}</div>
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2">
