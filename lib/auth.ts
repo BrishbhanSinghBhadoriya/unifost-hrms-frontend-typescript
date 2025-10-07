@@ -474,7 +474,7 @@ export const authService = {
       if (this.isTokenExpiredError(error)) {
         this.handleSessionExpired(error?.response?.data?.message);
       }
-      console.error('💥 Delete forgot password request error:', error);
+      console.error(' Delete forgot password request error:', error);
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to delete password reset request'
@@ -482,20 +482,27 @@ export const authService = {
     }
   },
 
-  async resetEmployeePassword(userId: string, password: string): Promise<{ success: boolean; message?: string; data?: any }> {
+  async resetEmployeePassword(email: string,newpassword:string): Promise<{ success: boolean; message?: string; data?: any }> {
     try {
       const token = this.getToken();
       if (!token) {
         return { success: false, message: 'No authentication token found' };
       }
+      console.log(newpassword)
 
-      const response = await axios.put(`${BACKEND_URL}hr/reset-password/${userId}`, 
-        { password },
+      const response = await axios.put(`${BACKEND_URL}hr/reset-password`, 
+      
+        {
+          email,
+          newpassword
+        },
+        
         {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          
         }
       );
 
@@ -525,7 +532,8 @@ export const authService = {
 
   async checkEmailExists(email: string): Promise<{ success: boolean; exists: boolean; user?: any; message?: string }> {
     try {
-      const response = await axios.post(`${BACKEND_URL}users/checkEmailExist`, { email });
+      const response = await axios.post(`${BACKEND_URL}users/check-user-exist-with-Email`, { email });
+      console.log(response)
 
       if (response.status === 200) {
         return {

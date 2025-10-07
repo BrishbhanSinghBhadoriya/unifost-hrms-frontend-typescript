@@ -532,37 +532,7 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        {/* <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'view' | 'mark')}>
-          <TabsList>
-            <TabsTrigger value="view">View Attendance</TabsTrigger>
-           {userRole !== 'employee' && <TabsTrigger value="mark">Mark Attendance</TabsTrigger>}
-          </TabsList>
-        </Tabs> */}
-
-        {/* {activeTab === 'mark' && (
-          <div className="flex items-center gap-3">
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => {
-                setEditing({
-                  date: dayjs().format('YYYY-MM-DD'),
-                  status: 'present' as any,
-                  employeeId: '',
-                  employeeName: ''
-                });
-                setEditOpen(true);
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" /> Mark Individual
-            </Button>
-
-            <a href="/attendance/mark-bulk">
-              <Button className="bg-green-600 hover:bg-green-700 text-white">
-              <Users className="mr-2 h-4 w-4" /> Mark Bulk Attendance
-            </Button>
-            </a>
-          </div>
-        )} */}
+        
       </div>
 
       <DataTable

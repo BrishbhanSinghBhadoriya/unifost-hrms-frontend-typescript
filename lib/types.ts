@@ -16,7 +16,7 @@ export interface Employee {
   phone: string;
   role: string;
   department: string;
-  joiningDate:string,
+  joiningDate:Date,
   designation: string;
   status: 'active' | 'inactive' | 'terminated';
   joinedOn: string;

@@ -47,10 +47,10 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen w-full flex items-center justify-center p-4 bg-cover bg-center"
+      className="min-h-screen w-full flex items-center justify-center p-4 bg-cover bg-center "
       style={{ backgroundImage: "url('/bg.jpg')" }} 
     >
-      <Card className="w-full max-w-md shadow-xl rounded-2xl bg-white/90 backdrop-blur-sm">
+      <Card className="w-full max-w-md shadow-xl rounded-2xl bg-white/90 backdrop-blur-sm dark:bg-black">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto rounded-full overflow-hidden w-20 h-20 mb-4 shadow-md">
             <img
@@ -60,29 +60,31 @@ export default function LoginPage() {
             />
           </div>
 
-          <CardTitle className="text-2xl font-bold text-gray-800">
+          <CardTitle className="text-2xl font-bold text-gray-800 dark:text-white">
             Welcome to HRMS
           </CardTitle>
-          <CardDescription className="text-gray-600">
+          <CardDescription className="text-gray-600 dark:text-white">
             Sign in to your account to continue
           </CardDescription>
         </CardHeader>
 
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username/Email</Label>
+          <form onSubmit={handleSubmit} className="space-y-4 ">
+            <div className="space-y-2 dark:space-y-2 dark:p-0 h-auto text-sm font-medium  ">
+              <Label className="dark:text-primary" htmlFor="username">Username</Label>
               <Input
                 id="username"
                 type="text"
                 placeholder="Enter your username or email"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                className="dark:text-white"
+                
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-2 dark:p-0 h-auto text-sm font-medium text-primary">
+              <Label className="dark:text-primary font-medium" htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -90,6 +92,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="dark:text-white"
               />
             </div>
             <div className="flex items-center justify-end px-1">

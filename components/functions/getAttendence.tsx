@@ -1,4 +1,3 @@
-import { Employee } from "@/lib/types";
 import Cookies from "js-cookie";
 import api from "@/lib/api";
 

@@ -314,9 +314,10 @@ export function ForgotPasswordModal({ children }: ForgotPasswordModalProps) {
                 Cancel
               </Button>
               <Button 
+               disabled={ !emailCheckResult ||forgotPasswordMutation.isPending}
                 type="submit" 
                 className="flex-1" 
-                disabled={forgotPasswordMutation.isPending}
+                
               >
                 {forgotPasswordMutation.isPending ? 'Submitting...' : 'Submit Request'}
               </Button>

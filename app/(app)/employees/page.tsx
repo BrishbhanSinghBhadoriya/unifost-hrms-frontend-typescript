@@ -36,16 +36,16 @@ import { EmployeeForm } from '@/components/forms/employee-form';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import { Employee } from '@/lib/types';
 import { mockDepartments } from '@/lib/mock';
-import { useFiltersStore } from '@/store/filters';
-import { UserPlus, Eye, Edit, Trash2 } from 'lucide-react';
+import { UserPlus, Eye, Edit, Trash2, Clock } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
-import Cookies from "js-cookie";
 import { useQuery } from '@tanstack/react-query';
 import { deleteEmployee, fetchEmployees, PaginationParams } from '@/components/functions/Employee';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import {useMutation} from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import dayjs from 'dayjs';
+import { formatDateTimeIST } from '@/lib/utils';
 
 
 export default function EmployeesPage() {
@@ -192,18 +192,29 @@ export default function EmployeesPage() {
       label: 'Designation',
       sortable: true,
     },
-    {
-      key: 'managerName' as keyof Employee,
-      label: 'Manager',
-      render: (value: string) => value || 'N/A',
-    },
+    
     
 
     {
-      key: 'joinedOn' as keyof Employee,
+      key: 'joiningDate' as keyof Employee,
       label: 'Joined',
       sortable: true,
-    },
+      render: (value: string, record: Employee) => {
+        // Ensure joiningDate exists
+        if (!record?.joiningDate) return "-";
+      
+        // Parse joiningDate
+        const joiningDate = dayjs(record.joiningDate);
+      
+        // Optional: parse value if needed
+        return (
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span>{joiningDate.format('DD-MM-YYYY')}</span>
+          </div>
+        );
+      }
+    }
   ];
 
   const filters = (

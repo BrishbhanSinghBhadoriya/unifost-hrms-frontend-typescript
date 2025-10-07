@@ -22,9 +22,8 @@ interface ForgotPasswordRequest {
   role: string;
   department: string;
   designation: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 export default function ResetEmpPasswordPage() {
@@ -108,8 +107,8 @@ export default function ResetEmpPasswordPage() {
 
   // Reset password mutation
   const resetPasswordMutation = useMutation({
-    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
-      const result = await authService.resetEmployeePassword(userId, password);
+    mutationFn: async ({email,newPassword}: { email: string,newPassword:string}) => {
+      const result = await authService.resetEmployeePassword(email,newPassword);
       if (!result.success) {
         throw new Error(result.message || 'Failed to reset password');
       }
@@ -151,8 +150,8 @@ export default function ResetEmpPasswordPage() {
     }
 
     resetPasswordMutation.mutate({
-      userId: selectedRequest._id,
-      password: newPassword
+      email:selectedRequest.email,
+      newPassword
     });
   };
 
@@ -231,7 +230,7 @@ export default function ResetEmpPasswordPage() {
       <Button
         size="sm"
         variant="destructive"
-        onClick={() => handleDeleteRequest(row._id)}
+        onClick={() => handleDeleteRequest(row.email)}
         disabled={deleteMutation.isPending}
       >
         <Trash2 className="h-4 w-4 mr-1" />
@@ -325,7 +324,6 @@ export default function ResetEmpPasswordPage() {
                                 designation: '',
                                 status: 'pending',
                                 createdAt: new Date().toISOString(),
-                                updatedAt: new Date().toISOString(),
                               });
                               setIsResetDialogOpen(true);
                             }}
