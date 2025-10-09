@@ -46,6 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { stat } from 'node:fs';
 
 
 export default function AttendancePage() {
@@ -85,12 +86,21 @@ export default function AttendancePage() {
       const recordId = record.id || (record as any)._id;
       
       if (recordId) {
+        const toIsoIST = (date?: string, hhmm?: string) => {
+          if (!date || !hhmm) return undefined as unknown as string;
+          const [hours, minutes] = hhmm.split(':').map(Number);
+          if (isNaN(hours) || isNaN(minutes)) return undefined as unknown as string;
+          const dt = dayjs.tz(`${date} ${hhmm}`, 'YYYY-MM-DD HH:mm', 'Asia/Kolkata');
+          if (!dt.isValid()) return undefined as unknown as string;
+          return dt.utc().toISOString();
+        };
+
         const payload = {
           employeeName: record.employeeName,
           status: record.status,
           date: record.date,
-          checkIn: record.checkIn,
-          checkOut: record.checkOut,
+          checkIn: record.checkIn?.includes('T') ? record.checkIn : toIsoIST(record.date, record.checkIn),
+          checkOut: record.checkOut?.includes('T') ? record.checkOut : toIsoIST(record.date, record.checkOut),
           hoursWorked: record.hoursWorked
         };
         console.log('Update API payload:', payload);
@@ -100,17 +110,11 @@ export default function AttendancePage() {
       } else {
         const toIso = (date?: string, hhmm?: string) => {
           if (!date || !hhmm) return undefined as unknown as string;
-
-          // Parse the time in HH:mm format and combine with date
           const [hours, minutes] = hhmm.split(':').map(Number);
           if (isNaN(hours) || isNaN(minutes)) return undefined as unknown as string;
-
-          // Create dayjs object with exact time in UTC to avoid timezone conversion
-          const dayjsDate = dayjs.utc(date).hour(hours).minute(minutes).second(0).millisecond(0);
-
-          if (!dayjsDate.isValid()) return undefined as unknown as string;
-
-          return dayjsDate.toISOString();
+          const dt = dayjs.tz(`${date} ${hhmm}`, 'YYYY-MM-DD HH:mm', 'Asia/Kolkata');
+          if (!dt.isValid()) return undefined as unknown as string;
+          return dt.utc().toISOString();
         };
         const payload = {
           employeeName: record.employeeName,
@@ -205,7 +209,7 @@ export default function AttendancePage() {
     // Format the times for the input fields
     const formatTimeForInput = (time?: string) => {
       if (!time) return '';
-      const iso = dayjs.utc(time);
+      const iso = dayjs.utc(time).tz('Asia/Kolkata');
       if (iso.isValid()) return iso.format('HH:mm');
       const hm = dayjs(time, 'HH:mm', true);
       if (hm.isValid()) return hm.format('HH:mm');
@@ -386,6 +390,7 @@ export default function AttendancePage() {
       label: 'Status',
       sortable: true,
       sortType: 'string' as const,
+      className: 'w-[150px]',
       sortAccessor: (row: AttendanceRecord) => String(row.status || ''),
       render: (status: string) => (
         <Badge variant={
@@ -394,7 +399,11 @@ export default function AttendancePage() {
           status === 'absent' ? 'destructive' :
           status === 'holiday' ? 'outline' : 'secondary'
         }>
-          {status}
+          {status === 'present' ? 'Present' :
+           status === 'leave' ? 'On Leave' :
+           status === 'absent' ? 'Absent' :
+           status=== 'late' ? 'Half Day' :null
+           }
         </Badge>
       ),
     },
@@ -598,17 +607,11 @@ export default function AttendancePage() {
 
               const toIso = (date?: string, hhmm?: string) => {
                 if (!date || !hhmm) return undefined as unknown as string;
-
-                // Parse the time in HH:mm format and combine with date
                 const [hours, minutes] = hhmm.split(':').map(Number);
                 if (isNaN(hours) || isNaN(minutes)) return undefined as unknown as string;
-
-                // Create dayjs object with exact time in UTC to avoid timezone conversion
-                const dayjsDate = dayjs.utc(date).hour(hours).minute(minutes).second(0).millisecond(0);
-
-                if (!dayjsDate.isValid()) return undefined as unknown as string;
-
-                return dayjsDate.toISOString();
+                const dt = dayjs.tz(`${date} ${hhmm}`, 'YYYY-MM-DD HH:mm', 'Asia/Kolkata');
+                if (!dt.isValid()) return undefined as unknown as string;
+                return dt.utc().toISOString();
               };
 
               const statusValue = (editing.status || 'present').toString().toLowerCase();

@@ -45,16 +45,7 @@ export default function DashboardPage() {
   const userRole = user?.role;
   const router = useRouter();
 
-  // const stats = useMemo(() => {
-  //   const totalEmployees = myLeaves.length;
-  //   const pendingLeaves = myLeaves.filter(l => l.status === 'pending').length;
-  //   const approvedLeaves = myLeaves.filter(l => l.status === 'approved').length;
-  //   const daysTaken = myLeaves
-  //     .filter(l => l.status === 'approved')
-  //     .reduce((sum, l) => sum + (l.totalDays || l.days || 0), 0);
-  //   return { totalEmployees, pendingLeaves, approvedLeaves, daysTaken };
-  // }, [myLeaves]);
-
+  
   
   const {data: dashboardData, isLoading: isDashboardLoading} = useQuery({
     queryKey: ['dashboard'],
