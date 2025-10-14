@@ -36,44 +36,14 @@ export function Topbar({ onToggleSidebar, title, breadcrumbs, actions }: TopbarP
   const { user, logout } = useAuth();
 
   const  handleLogout = async () => {
-    console.log('Logging out...');
-    try {
-      const cookieToken = Cookies.get('token');
-      console.log('Cookie token:', cookieToken);
-      console.log(`Backend URL: ${process.env.NEXT_PUBLIC_BACKEND_URL}`);
-      
-      const logoutResult = await axios.post('https://unifost-hrms-backend.onrender.com/api/users/logout', {},
-        {
-        headers: {  
-          Authorization: `Bearer ${cookieToken}`
-        }
-      });
-      
-
-      console.log('Logout result:', logoutResult);
-
-      if (logoutResult.status >= 200 && logoutResult.status < 300) {
-        // Local cleanup
-        localStorage.removeItem("user");
-        localStorage.removeItem("token");
-        try { Cookies.remove("token"); } catch {}
-        window.location.href = '/login';
-        return { success: true, message: "Logged out successfully" };
-
-        
-      } else {
-        return { success: false, message: "Failed to logout" };
-      }
-    } catch (error: any) {
-      const axiosErr = error as AxiosError<{ message?: string }>;
-      return {
-        success: false,
-        message:
-          axiosErr?.response?.data?.message ||
-          (error as any)?.message ||
-          "Logout failed",
-      };
-    }
+    console.log('Topbar: handleLogout called');
+   const result:any= await logout();
+   console.log('Topbar: logout result:', result);
+   if (result) {
+     
+       console.log('Topbar: User logged out successfully');
+     }
+   
   };
 
   

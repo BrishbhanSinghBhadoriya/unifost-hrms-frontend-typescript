@@ -28,6 +28,7 @@ interface Column<T> {
   key: keyof T;
   label: string;
   sortable?: boolean;
+  className?: string;
   render?: (value: any, row: T) => React.ReactNode;
   className?: string;
   sortAccessor?: (row: T) => any;

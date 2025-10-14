@@ -122,8 +122,22 @@ export const authService = {
   },
 
   async logout(): Promise<{ success: boolean; message: string }> {
+    const token = Cookies.get('token');
+    console.log('AuthService: logout called with token:', token);
+    if (!token) {
+      console.log('AuthService: No token found, performing local logout');
+    }
     try {
-      const logoutResult = await axios.post(`${BACKEND_URL}users/logout`);
+      const logoutResult = await axios.post(
+        `${BACKEND_URL}users/logout`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      console.log('AuthService: logout result:', logoutResult);
 
       if (logoutResult.status >= 200 && logoutResult.status < 300) {
         // Local cleanup
