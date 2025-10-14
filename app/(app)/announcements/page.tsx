@@ -83,7 +83,7 @@ export default function AnnouncementPage() {
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.openxmlformats-officedocument.Presentationml.Presentation',
       'text/plain',
     ];
     const accepted = Array.from(files).filter((f) => acceptedTypes.includes(f.type));
@@ -275,7 +275,7 @@ export default function AnnouncementPage() {
                     type="file"
                     multiple
                     onChange={(e) => handleDocs(e.target.files)}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.Presentationml.Presentation,text/plain"
                   />
                   {docFiles.length > 0 && (
                     <ul className="space-y-2">

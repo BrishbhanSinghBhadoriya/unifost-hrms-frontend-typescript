@@ -385,6 +385,7 @@ export default function AttendancePage() {
       key: 'status' as keyof AttendanceRecord,
       label: 'Status',
       sortable: true,
+      className: 'w-[120px]', // Column width set here
       sortType: 'string' as const,
       sortAccessor: (row: AttendanceRecord) => String(row.status || ''),
       render: (status: string) => (
@@ -392,9 +393,15 @@ export default function AttendancePage() {
           status === 'present' ? 'default' :
           status === 'leave' ? 'secondary' :
           status === 'absent' ? 'destructive' :
-          status === 'holiday' ? 'outline' : 'secondary'
+          status === 'holiday' ? 'outline' : 
+          status === 'late' ?'destructive': 'secondary'
+          
         }>
-          {status}
+          {status=== 'present' ? 'Present' :
+          status === 'leave' ? 'Leave' :
+          status === 'absent' ? 'Absent' :
+          status === 'late' ? 'Half Day' : null
+          }
         </Badge>
       ),
     },
@@ -479,7 +486,7 @@ export default function AttendancePage() {
           <SelectItem value="absent">Absent</SelectItem>
           <SelectItem value="leave">Leave</SelectItem>
           <SelectItem value="holiday">Holiday</SelectItem>
-          <SelectItem value="half-day">Half Day</SelectItem>
+          <SelectItem value="late">Half Day</SelectItem>
         </SelectContent>
       </Select>
 
@@ -573,6 +580,7 @@ export default function AttendancePage() {
         searchPlaceholder="Search by name, status, date..."
         onSearch={(query) => setAttendanceFilters({ employee: query })}
         filters={filters}
+        
       />
 
       {isHR && (
@@ -612,8 +620,8 @@ export default function AttendancePage() {
               };
 
               const statusValue = (editing.status || 'present').toString().toLowerCase();
-              const validStatus = ['present', 'absent', 'leave', 'holiday', 'half-day'].includes(statusValue) 
-                ? statusValue as 'present' | 'absent' | 'leave' | 'holiday' | 'half-day'
+              const validStatus = ['present', 'absent', 'leave', 'holiday', 'late'].includes(statusValue) 
+                ? statusValue as 'present' | 'absent' | 'leave' | 'holiday' | 'late'
                 : 'present';
 
               // Calculate hours worked if both check-in and check-out are provided

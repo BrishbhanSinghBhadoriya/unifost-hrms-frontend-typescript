@@ -29,6 +29,7 @@ interface Column<T> {
   label: string;
   sortable?: boolean;
   render?: (value: any, row: T) => React.ReactNode;
+  className?: string;
   sortAccessor?: (row: T) => any;
   sortType?: 'string' | 'number' | 'date';
 }
@@ -172,7 +173,7 @@ export function DataTable<T extends Record<string, any>>({
                 </TableHead>
               )}
               {columns.map((column) => (
-                <TableHead key={column.key as string}>
+                <TableHead key={column.key as string} className={column.className}>
                   {column.sortable ? (
                     <Button
                       variant="ghost"
@@ -214,7 +215,7 @@ export function DataTable<T extends Record<string, any>>({
                     </TableCell>
                   )}
                   {columns.map((column) => (
-                    <TableCell key={column.key as string}>
+                    <TableCell key={column.key as string} className={column.className}>
                       {column.render
                         ? column.render(row[column.key], row)
                         : row[column.key]}

@@ -108,22 +108,22 @@ export default function DashboardPage() {
     return 'Good night';
   }, []);
 
-  // Monthly attendance coloring (present/absent/halfday)
-  const { presentDates, absentDates, halfDayDates } = useMemo(() => {
+  // Monthly attendance coloring (Present/Absent/halfday)
+  const { PresentDates, AbsentDates, halfDayDates } = useMemo(() => {
     const monthly = (empdashboardData?.data?.monthly?.attendance || empdashboardData?.data?.attendance || []) as any[];
-    const present = monthly
-      .filter((a) => String(a.status).toLowerCase() === 'present')
+    const Present = monthly
+      .filter((a) => String(a.status).toLowerCase() === 'Present')
       .map((a) => new Date(a.date));
-    const absent = monthly
-      .filter((a) => String(a.status).toLowerCase() === 'absent')
+    const Absent = monthly
+      .filter((a) => String(a.status).toLowerCase() === 'Absent')
       .map((a) => new Date(a.date));
     const halfday = monthly
       .filter((a) => {
         const s = String(a.status).toLowerCase();
-        return s === 'late' || s === 'halfday' || s === 'half day' || s === 'half_day';
+        return s === 'Late' || s === 'Halfday' || s === 'Half day' || s === 'Half_day';
       })
       .map((a) => new Date(a.date));
-    return { presentDates: present, absentDates: absent, halfDayDates: halfday };
+    return { PresentDates: Present, AbsentDates: Absent, halfDayDates: halfday };
   }, [empdashboardData]);
 
   return (
@@ -187,8 +187,8 @@ export default function DashboardPage() {
               <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Today's Attendance</CardTitle></CardHeader>
           <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Present</p><p className="text-lg font-semibold">{attendance.present ?? '—'}</p></div>
-                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Absent</p><p className="text-lg font-semibold">{attendance.absent ?? '—'}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Present</p><p className="text-lg font-semibold">{attendance.Present ?? '—'}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Absent</p><p className="text-lg font-semibold">{attendance.Absent ?? '—'}</p></div>
                   <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Late</p><p className="text-lg font-semibold">{attendance.late ?? '—'}</p></div>
                   <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">On Leave</p><p className="text-lg font-semibold">{(attendance.onLeave ?? 0) as any}</p></div>
                 </div>
@@ -339,7 +339,7 @@ export default function DashboardPage() {
             title="Working Days This Month"
             value={empdashboardData?.data?.monthly?.totalWorkingDays ?? 0}
             icon={Calendar}
-            description={`Present: ${empdashboardData?.data?.monthly?.presentDays ?? 0} • Absent: ${empdashboardData?.data?.monthly?.absentDays ?? 0} • Late: ${empdashboardData?.data?.monthly?.lateDays ?? 0}`}
+            description={`Present: ${empdashboardData?.data?.monthly?.PresentDays ?? 0} • Absent: ${empdashboardData?.data?.monthly?.AbsentDays ?? 0} • Late: ${empdashboardData?.data?.monthly?.lateDays ?? 0}`}
           />
             <StatCard title="My Pending Leaves" value={employeeStats.pendingLeaves} icon={FileText} description="Awaiting HR approval" />
             <StatCard title="My Approved Leaves" value={employeeStats.approvedLeaves} icon={Activity} description="This year" />
@@ -350,13 +350,13 @@ export default function DashboardPage() {
           <CardHeader>
     <CardTitle>Daily Attendance</CardTitle>
     <CardDescription>
-      {empdashboardData?.data?.today.status === "present" ? "Check-in / Check-out for today" : "Status for today"} • {dayjs().format("dddd, DD MMM YYYY")}
+      {empdashboardData?.data?.today.status === "Present" ? "Check-in / Check-out for today" : "Status for today"} • {dayjs().format("dddd, DD MMM YYYY")}
     </CardDescription>
           </CardHeader>
           <CardContent>
     <div className="text-sm">
     {empdashboardData?.data ? (
-  empdashboardData?.data?.today.status === "present" ? (
+  empdashboardData?.data?.today.status === "Present" ? (
 
 <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -381,7 +381,7 @@ export default function DashboardPage() {
         Hours Worked: {empdashboardData?.data?.today.hoursWorked ?? 0}
       </div>
     </div>
-  ) : empdashboardData?.data?.today.status === "absent" ? (
+  ) : empdashboardData?.data?.today.status === "Absent" ? (
     <div className="flex items-center gap-2">
       <span className="inline-flex h-2 w-2 rounded-full bg-red-500" />
       <span>Absent</span>
@@ -434,10 +434,10 @@ export default function DashboardPage() {
                 <CardContent>
                   <MiniCalendar
                     mode="single"
-                    modifiers={{ present: presentDates, absent: absentDates, halfday: halfDayDates }}
+                    modifiers={{ Present: PresentDates, Absent: AbsentDates, halfday: halfDayDates }}
                     modifiersClassNames={{
-                      present: 'bg-green-500 text-white hover:bg-green-600',
-                      absent: 'bg-red-500 text-white hover:bg-red-600',
+                      Present: 'bg-green-500 text-white hover:bg-green-600',
+                      Absent: 'bg-red-500 text-white hover:bg-red-600',
                       halfday: 'bg-yellow-500 text-black hover:bg-yellow-600',
                     }}
                     className="rounded-md border w-full"

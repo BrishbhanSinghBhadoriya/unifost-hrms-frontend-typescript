@@ -106,7 +106,7 @@ const ExperienceTab = () => {
                       <div className="font-semibold capitalize">{exp.company}</div>
                       <div className="text-sm text-muted-foreground capitalize">{exp.designation}</div>
                       <div className="text-sm text-muted-foreground">
-                        {exp.startDate ? new Date(exp.startDate).toLocaleDateString() : '-'} — {exp.endDate ? new Date(exp.endDate).toLocaleDateString() : 'present'}
+                        {exp.startDate ? new Date(exp.startDate).toLocaleDateString() : '-'} — {exp.endDate ? new Date(exp.endDate).toLocaleDateString() : 'Present'}
                       </div>
                       {exp.description && (
                         <div className="text-sm mt-2">{exp.description}</div>
