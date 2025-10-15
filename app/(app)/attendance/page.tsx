@@ -21,6 +21,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { formatDateTimeIST as sharedFormatDateTimeIST } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 dayjs.extend(utc);
@@ -55,7 +56,7 @@ export default function AttendancePage() {
   const { attendanceFilters, setAttendanceFilters } = useFiltersStore();
   const userRole = user?.role;
   const currentEmployeeId = user?.id;
-  const isHR = userRole === 'hr' || userRole === 'admin';
+  const isHR = userRole === 'hr' || userRole === 'admin' || userRole === 'manager';
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<AttendanceRecord> | null>(null);
@@ -256,11 +257,39 @@ export default function AttendancePage() {
   const formatDateTimeIST = (date?: string, time?: string) => sharedFormatDateTimeIST(date, time, true);
 
   // Build a map of employeeId -> employee for quick lookup
+  const employeeIdToEmployee = new Map<string, Employee>(
+    (employeesData || []).map((e: Employee) => [String(((e as any)._id)), e])
+  );
   const employeeIdToName = new Map<string, string>(
     (employeesData || []).map((e: Employee) => [String(((e as any)._id)), e.name])
   );
 
   const columns = [
+    {
+      key: 'profilePicture' as any,
+      label: 'Photo',
+      sortable: false,
+      render: (_: any, row: AttendanceRecord) => {
+        const v: any = row.employeeId as any;
+        const empId = typeof v === 'string' ? v : String(v?._id || v?.id || '');
+        const emp = employeeIdToEmployee.get(empId);
+        const name = (row as any).employeeName || emp?.name || '';
+        const initials = String(name)
+          .split(' ')
+          .filter(Boolean)
+          .map((n) => n[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase();
+        const src = (row as any).profilePicture || emp?.profilePicture || '';
+        return (
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={src} alt={name} />
+            <AvatarFallback>{initials || 'U'}</AvatarFallback>
+          </Avatar>
+        );
+      },
+    },
     {
       key: 'employeeId' as keyof AttendanceRecord,
       label: 'Employee ID',
