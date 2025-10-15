@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { Badge as UiBadge } from '@/components/ui/badge';
 import {
   Users,
   Calendar,
@@ -13,6 +14,9 @@ import {
   Settings,
   LayoutDashboard,
   Building,
+  Shield,
+  Briefcase,
+  Hash,
   Bell,
   Key,
 } from 'lucide-react';
@@ -61,7 +65,35 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
           {!collapsed && (
             <div>
               <h1 className="font-bold text-xl tracking-tight">HRMS</h1>
-              <p className="text-xs text-muted-foreground">Human Resources</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {/* Role badge */}
+                <UiBadge className={cn(
+                  'px-2 py-0.5 text-[10px] font-semibold flex items-center gap-1',
+                  userRole === 'admin' && 'bg-purple-100 text-purple-700',
+                  userRole === 'hr' && 'bg-blue-100 text-blue-700',
+                  userRole === 'manager' && 'bg-amber-100 text-amber-700',
+                  userRole === 'employee' && 'bg-green-100 text-green-700'
+                )}>
+                  <Shield className="h-3 w-3" />
+                  {(user?.role ? (user?.role === 'manager' ? 'Manager' : user?.role === 'hr' ? 'HR' : user?.role === 'admin' ? 'Admin' : 'Employee') : 'Employee')}
+                </UiBadge>
+
+                {/* Department pill */}
+                {user?.department ? (
+                  <UiBadge variant="secondary" className="px-2 py-0.5 text-[10px] font-medium flex items-center gap-1">
+                    <Briefcase className="h-3 w-3" />
+                    {user.department}
+                  </UiBadge>
+                ) : null}
+
+                {/* Employee ID pill */}
+                {user?.employeeId ? (
+                  <UiBadge variant="secondary" className="px-2 py-0.5 text-[10px] font-medium flex items-center gap-1">
+                    <Hash className="h-3 w-3" />
+                    <span className="font-mono">{user.employeeId}</span>
+                  </UiBadge>
+                ) : null}
+              </div>
             </div>
           )}
         </div>
