@@ -391,7 +391,7 @@ export default function AttendancePage() {
       sortable: true,
       className: 'w-[120px]', // Column width set here
       sortType: 'string' as const,
-      className: 'w-[150px]',
+      
       sortAccessor: (row: AttendanceRecord) => String(row.status || ''),
       render: (status: string) => (
         <Badge variant={

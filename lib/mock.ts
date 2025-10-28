@@ -217,7 +217,7 @@ export const mockAttendance: AttendanceRecord[] = [
     checkIn: '09:00',
     checkOut: '18:00',
     hoursWorked: 8,
-    status: 'Present'
+    status: 'present'
   },
   {
     id: '2',
@@ -227,7 +227,7 @@ export const mockAttendance: AttendanceRecord[] = [
     checkIn: '09:15',
     checkOut: '17:45',
     hoursWorked: 7.5,
-    status: 'Present'
+    status: 'present'
   },
   {
     id: '3',
@@ -244,7 +244,7 @@ export const mockAttendance: AttendanceRecord[] = [
     checkIn: '08:45',
     checkOut: '18:15',
     hoursWorked: 8.5,
-    status: 'Present'
+    status: 'present'
   }
 ];
 
