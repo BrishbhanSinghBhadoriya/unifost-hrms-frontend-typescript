@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { formatDateTimeIST as sharedFormatDateTimeIST } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 dayjs.extend(utc);
@@ -55,7 +56,7 @@ export default function AttendancePage() {
   const { attendanceFilters, setAttendanceFilters } = useFiltersStore();
   const userRole = user?.role;
   const currentEmployeeId = user?.id;
-  const isHR = userRole === 'hr' || userRole === 'admin';
+  const isHR = userRole === 'hr' || userRole === 'admin' || userRole === 'manager';
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<AttendanceRecord> | null>(null);
@@ -66,20 +67,33 @@ export default function AttendancePage() {
   const [rangeEnd, setRangeEnd] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'view' | 'mark'>('view');
 
-
-
   const { data: employeesData } = useQuery({
     queryKey: ['employees'],
     queryFn: fetchAllEmployees,
   });
 
-
   const { data: AttendanceData, isLoading } = useQuery({
     queryKey: ['attendance'],
-    queryFn: fetchEmployeesAttenedence
+    queryFn: fetchEmployeesAttenedence,
+  });
 
-  })
-  
+  // Build a map of employeeId -> employee for quick lookup
+  const employeeIdToEmployee = useMemo(() => new Map<string, Employee>(
+    (employeesData || []).map((e: Employee) => [String(((e as any)._id)), e])
+  ), [employeesData]);
+
+  const employeeIdToName = useMemo(() => new Map<string, string>(
+    (employeesData || []).map((e: Employee) => [String(((e as any)._id)), e.name])
+  ), [employeesData]);
+
+  const processedAttendanceData = useMemo(() => {
+    const data = (AttendanceData ?? []) as AttendanceRecord[];
+    // Sort by date in descending order by default
+    return [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [AttendanceData]);
+
+
+
   const saveMutation = useMutation({
     mutationFn: async (record: Partial<AttendanceRecord>) => {
       console.log('Save mutation called with:', record);
@@ -255,12 +269,32 @@ export default function AttendancePage() {
 
   const formatDateTimeIST = (date?: string, time?: string) => sharedFormatDateTimeIST(date, time, true);
 
-  // Build a map of employeeId -> employee for quick lookup
-  const employeeIdToName = new Map<string, string>(
-    (employeesData || []).map((e: Employee) => [String(((e as any)._id)), e.name])
-  );
-
   const columns = [
+    {
+      key: 'profilePicture' as any,
+      label: 'Photo',
+      sortable: false,
+      render: (_: any, row: AttendanceRecord) => {
+        const v: any = row.employeeId as any;
+        const empId = typeof v === 'string' ? v : String(v?._id || v?.id || '');
+        const emp = employeeIdToEmployee.get(empId);
+        const name = (row as any).employeeName || emp?.name || '';
+        const initials = String(name)
+          .split(' ')
+          .filter(Boolean)
+          .map((n) => n[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase();
+        const src = (row as any).profilePicture || emp?.profilePicture || '';
+        return (
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={src} alt={name} />
+            <AvatarFallback>{initials || 'U'}</AvatarFallback>
+          </Avatar>
+        );
+      },
+    },
     {
       key: 'employeeId' as keyof AttendanceRecord,
       label: 'Employee ID',
@@ -548,7 +582,7 @@ export default function AttendancePage() {
       </div>
 
       <DataTable
-        data={((AttendanceData ?? []) as AttendanceRecord[])
+        data={processedAttendanceData
           .map((rec) => ({
             ...rec,
             employeeName: rec.employeeName || employeeIdToName.get(String(rec.employeeId)) || rec.employeeName,

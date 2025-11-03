@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DivideIcon as LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { ReactNode } from 'react';
 
 interface StatCardProps {
-  title: string;
+  title: ReactNode;
   value: string | number;
   icon: typeof LucideIcon;
-  description?: string;
+  description?: ReactNode;
   valueSuffix?: string;
   accentClassName?: string; // e.g. 'bg-blue-100 text-blue-600'
   trend?: {

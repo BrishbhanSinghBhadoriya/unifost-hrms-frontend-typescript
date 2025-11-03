@@ -21,8 +21,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import {SlidersHorizontal } from 'lucide-react';
-
-import { ChevronDown, ChevronUp, Search, Filter } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 
 interface Column<T> {
   key: keyof T;
@@ -30,7 +29,6 @@ interface Column<T> {
   sortable?: boolean;
   className?: string;
   render?: (value: any, row: T) => React.ReactNode;
-  className?: string;
   sortAccessor?: (row: T) => any;
   sortType?: 'string' | 'number' | 'date';
 }

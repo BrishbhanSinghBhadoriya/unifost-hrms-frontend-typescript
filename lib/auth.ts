@@ -238,7 +238,6 @@ export const authService = {
       };
     }
   },
-
   async updateEmployeeProfile(userId: string, updates: Record<string, any>): Promise<{ success: boolean; data?: any; message?: string }> {
     try {
       const token = this.getToken();

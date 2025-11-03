@@ -37,7 +37,6 @@ import { getUpcommingLeaves } from '@/components/functions/getUpcommingLeaves';
 import { fetchAllEmployees } from '@/components/functions/Employee';
 import getLeaves from '@/components/functions/getLeaves';
 import { Calendar as MiniCalendar } from '@/components/ui/calendar';
-import { generateIndianHolidays } from '@/lib/indian-holidays';
 dayjs.extend(relativeTime);
 
 export default function DashboardPage() {
@@ -50,7 +49,7 @@ export default function DashboardPage() {
   const {data: dashboardData, isLoading: isDashboardLoading} = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => getDashboardData(),
-    enabled: userRole === 'hr',
+    enabled: userRole === 'hr' || userRole === 'manager',
   });
   const {data: empdashboardData, isLoading: isEmpDashboardLoading} = useQuery({
     queryKey: ['employee-dashboard'],
@@ -99,23 +98,28 @@ export default function DashboardPage() {
     return 'Good night';
   }, []);
 
+  // Sort attendance data once in descending order and reuse
+  const sortedAttendance = useMemo(() => {
+    const attendanceData = (empdashboardData?.data?.monthly?.attendance || empdashboardData?.data?.attendance || []) as any[];
+    return [...attendanceData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [empdashboardData]);
+
   // Monthly attendance coloring (Present/Absent/halfday)
   const { PresentDates, AbsentDates, halfDayDates } = useMemo(() => {
-    const monthly = (empdashboardData?.data?.monthly?.attendance || empdashboardData?.data?.attendance || []) as any[];
-    const Present = monthly
+    const Present = sortedAttendance
       .filter((a) => String(a.status).toLowerCase() === 'Present')
       .map((a) => new Date(a.date));
-    const Absent = monthly
+    const Absent = sortedAttendance
       .filter((a) => String(a.status).toLowerCase() === 'Absent')
       .map((a) => new Date(a.date));
-    const halfday = monthly
+    const halfday = sortedAttendance
       .filter((a) => {
         const s = String(a.status).toLowerCase();
         return s === 'Late' || s === 'Halfday' || s === 'Half day' || s === 'Half_day';
       })
       .map((a) => new Date(a.date));
     return { PresentDates: Present, AbsentDates: Absent, halfDayDates: halfday };
-  }, [empdashboardData]);
+  }, [sortedAttendance]);
 
   return (
     <div className="space-y-8">
@@ -145,8 +149,8 @@ export default function DashboardPage() {
           </Avatar>
           <div className="flex-1">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{greeting}, {user?.name?.split(' ')[0] || 'there'} 👋</h1>
-            <p className="text-sm text-muted-foreground">
-              {user?.designation || 'Employee'} • {user?.department}
+            <p className="text-sm text-muted-foreground font-medium">
+              {user?.designation || 'Employee'} • {user?.role ? user?.role === 'manager' ? 'Manager' : user?.role === 'hr' ? 'HR' : user?.role === 'admin' ? 'Admin' : 'Employee' : 'Employee'} • {user?.department} • {user?.employeeId}
             </p>
           </div>
           <div className=''>Last login: {user?.lastLogin ? dayjs(user.lastLogin).format('DD MMM YYYY, hh:mm A') : '—'}</div>
@@ -166,10 +170,10 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {userRole === 'hr' ? (
+        {(userRole === 'hr' || userRole ==='manager') ? (
           <>
 
-           <Link href="/employees"> <StatCard title="Total Employees" value={stats.totalEmployees || 0} icon={Users} description="All active employees" accentClassName="bg-blue-100 text-blue-600" /> </Link>
+           <Link href="/employees"> <StatCard title={userRole ==='manager' ?(<> Total Employees in  <span className='font-medium'>{user?.department}</span> </>):(userRole ==='hr' ?(<> Total Employees </>):("Total Employees"))} value={userRole ==='manager' ? stats?.departmentwiseEmployees || 0 : stats.totalEmployees || 0} icon={Users} description="All active employees" accentClassName="bg-blue-100 text-blue-600" /> </Link>
             
             <StatCard title="New Joinees" value={stats.newJoiners || 0} icon={Users} description="This month" accentClassName="bg-green-100 text-green-600" />
            <Link href={"/leaves"}> <StatCard title="Pending Leaves" value={stats.pendingLeaves || 0} icon={FileText} description="Awaiting approval" accentClassName="bg-amber-100 text-amber-600" />
@@ -178,10 +182,10 @@ export default function DashboardPage() {
               <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Today's Attendance</CardTitle></CardHeader>
           <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Present</p><p className="text-lg font-semibold">{attendance.Present ?? '—'}</p></div>
-                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Absent</p><p className="text-lg font-semibold">{attendance.Absent ?? '—'}</p></div>
-                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Late</p><p className="text-lg font-semibold">{attendance.late ?? '—'}</p></div>
-                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">On Leave</p><p className="text-lg font-semibold">{(attendance.onLeave ?? 0) as any}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Present</p><p className="text-lg font-semibold">{ userRole ==='manager' ? attendance.departmentwisePresent ?? '—' : attendance.present ?? '—'}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Absent</p><p className="text-lg font-semibold">{ userRole ==='manager' ? attendance.departmentwiseAbsent ?? '—' : attendance.absent ?? '—'}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">Late</p><p className="text-lg font-semibold">{ userRole ==='manager' ? attendance.departmentwiseLate ?? '—' : attendance.late ?? '—'}</p></div>
+                  <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">On Leave</p><p className="text-lg font-semibold">{(userRole ==='manager' ? attendance.departmentwiseOnLeave ?? 0 : attendance.onLeave ?? 0) as any}</p></div>
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">{dayjs(Date.now()).format('DD/MM/YYYY')}</p>
           </CardContent>
