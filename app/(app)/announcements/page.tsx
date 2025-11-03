@@ -348,7 +348,7 @@ export default function AnnouncementPage() {
 
       <Tabs defaultValue="create" className="w-full">
         <TabsList>
-          <TabsTrigger value="create">Create</TabsTrigger>
+        {user?.role==='hr' && <TabsTrigger value="create">Create</TabsTrigger>}  
           <TabsTrigger value="view">View</TabsTrigger>
         </TabsList>
 
