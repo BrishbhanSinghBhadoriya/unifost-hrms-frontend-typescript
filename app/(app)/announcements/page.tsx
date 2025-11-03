@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import { z } from "zod";
 import api from "@/lib/api";
 
+
 import {
   Card,
   CardContent,
@@ -49,6 +50,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/lib/auth-context";
 
 export type AnnouncementFormValues = {
   _id:string,
@@ -111,6 +113,10 @@ export default function AnnouncementPage() {
   const [imageFiles,setimageFiles]=useState<File[]>([])
   const [docFiles, setDocFiles] = useState<File[]>([]);
   const [docURLs, setDocURLs] = useState<string[]>([]);
+
+   const { user } = useAuth();
+
+
 
 
   const form = useForm<AnnouncementFormValues>({
@@ -346,7 +352,8 @@ export default function AnnouncementPage() {
           <TabsTrigger value="view">View</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="create">
+        {user?.role==='hr' && (
+          <TabsContent value="create">
           <Card>
             <CardHeader>
               <CardTitle>Announcement Details</CardTitle>
@@ -575,6 +582,8 @@ export default function AnnouncementPage() {
           </CardContent>
           </Card>
         </TabsContent>
+        )}
+        
 
         <TabsContent value="view">
           <Card>

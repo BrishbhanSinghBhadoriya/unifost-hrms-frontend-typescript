@@ -45,6 +45,8 @@ interface DataTableProps<T> {
   initialPageSize?: number;
   selectable?: boolean;
   onSelectionChange?: (rows: T[]) => void;
+  defaultSortColumn?: keyof T;
+  defaultSortDirection?: 'asc' | 'desc';
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -58,9 +60,11 @@ export function DataTable<T extends Record<string, any>>({
   initialPageSize = 10,
   selectable = false,
   onSelectionChange,
+  defaultSortColumn,
+  defaultSortDirection
 }: DataTableProps<T>) {
-  const [sortColumn, setSortColumn] = useState<keyof T | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortColumn, setSortColumn] = useState<keyof T | null>(defaultSortColumn ?? null);
+const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection ?? 'asc');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);

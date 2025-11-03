@@ -611,6 +611,8 @@ export default function AttendancePage() {
         searchPlaceholder="Search by name, status, date..."
         onSearch={(query) => setAttendanceFilters({ employee: query })}
         filters={filters}
+        defaultSortColumn="date"
+        defaultSortDirection="desc"
       />
 
       {isHR && (

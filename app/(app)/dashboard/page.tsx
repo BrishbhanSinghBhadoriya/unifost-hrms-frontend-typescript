@@ -459,10 +459,6 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold">Employee Management</h2>
 
           
-          
-
-          {/* Engagement & Announcements */}
-                    
         </div>
       )}
 
