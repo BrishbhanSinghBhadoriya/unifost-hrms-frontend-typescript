@@ -148,15 +148,7 @@ export const indianNationalHolidays: HolidayEvent[] = [
     description: 'Diwali / Festival of Lights',
     isIndianHoliday: true,
   },
-  {
-    id: 'guru-nanak-jayanti-2025',
-    title: 'Guru Nanak Jayanti',
-    start: moment('2025-11-05').toDate(),
-    end: moment('2025-11-05').toDate(),
-    type: 'optional',
-    description: 'Guru Nanak’s Birth Anniversary',
-    isIndianHoliday: true,
-  },
+  
   {
     id: 'christmas-2025',
     title: 'Christmas Day',

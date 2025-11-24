@@ -36,14 +36,17 @@ export const authService = {
     return false;
   },
 
-  async login(username: string, password: string): Promise<LoginResponse> {
+  async login(username: string, password: string, deviceWidth: number): Promise<LoginResponse> {
     
     try {
+      const deviceWidth = window.innerWidth || document.documentElement.clientWidth;
+      console.log('Device width:', deviceWidth);
       console.log(' Making API call to:', `${BACKEND_URL}/users/login`);
       
         const response = await axios.post(`${BACKEND_URL}users/login`, {
         username,
         password,
+        deviceWidth,
       });
       
 

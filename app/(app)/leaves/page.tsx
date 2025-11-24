@@ -33,6 +33,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { approveLeave, rejectLeave } from '@/components/functions/updateLeaves';
 import { useMutation } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getAllLeaveBalances, getMyLeaveBalance, UserBalance } from '@/components/functions/getLeaveBalances';
 
 
 
@@ -42,7 +44,7 @@ export default function LeavesPage() {
   
   const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
   const { leaveFilters, setLeaveFilters } = useFiltersStore();
-  const [activeTab, setActiveTab] = useState<'view' | 'mark'>('view');
+  const [activeTab, setActiveTab] = useState<'view' | 'mark' | 'balance'>('view');
 
   const userRole = user?.role || 'employee';
 
@@ -82,6 +84,75 @@ export default function LeavesPage() {
   const hrLeaves = (result as any[]).filter((l: any) => l?.employeeRole === 'hr');
   const tableData = (activeTab === 'mark') ? hrLeaves : employeeLeaves;
   console.log('leaves', result);
+  // Leave Balances
+  const { data: allBalances, isLoading: isLoadingAllBalances } = useQuery<{ balances: UserBalance[] } | UserBalance[] | any>({
+    queryKey: ['leave-balances', 'all'],
+    queryFn: async () => await getAllLeaveBalances(),
+    enabled: activeTab === 'balance' && userRole !== 'employee',
+  });
+  const { data: myBalance, isLoading: isLoadingMyBalance } = useQuery<UserBalance | null>({
+    queryKey: ['leave-balance', 'me'],
+    queryFn: async () => await getMyLeaveBalance(),
+    enabled: activeTab === 'balance' && userRole === 'employee',
+  });
+
+  const balancesArray: UserBalance[] = Array.isArray(allBalances) ? allBalances as UserBalance[] : [];
+
+  const balanceColumns = [
+    {
+      key: 'user' as any,
+      label: 'Employee',
+      render: (_: any, b: UserBalance) => (
+        <div>
+          <div className="font-medium">{b.user.name}</div>
+          <div className="text-sm text-muted-foreground">{b.user.department}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'window' as any,
+      label: 'Window',
+      render: (_: any, b: UserBalance) => (
+        <div className="text-sm">
+          {dayjs(b.window.start).format('MMM DD, YYYY')} - {dayjs(b.window.end).format('MMM DD, YYYY')}
+        </div>
+      ),
+    },
+    {
+      key: 'accrual' as any,
+      label: 'Accrual',
+      render: (_: any, b: UserBalance) => (
+        <div className="flex gap-2 text-sm">
+          <Badge variant="secondary">Casual: {b.accrual.casual}</Badge>
+          <Badge variant="secondary">Sick: {b.accrual.sick}</Badge>
+          <Badge variant="secondary">Earned: {b.accrual.earned}</Badge>
+        </div>
+      ),
+    },
+    {
+      key: 'used' as any,
+      label: 'Used',
+      render: (_: any, b: UserBalance) => (
+        <div className="flex gap-2 text-sm">
+          <Badge variant="outline">Casual: {b.used.casual}</Badge>
+          <Badge variant="outline">Sick: {b.used.sick}</Badge>
+          <Badge variant="outline">Earned: {b.used.earned}</Badge>
+        </div>
+      ),
+    },
+    {
+      key: 'remaining' as any,
+      label: 'Remaining',
+      render: (_: any, b: UserBalance) => (
+        <div className="flex gap-2 text-sm">
+          <Badge>Casual: {b.remaining.casual}</Badge>
+          <Badge>Sick: {b.remaining.sick}</Badge>
+          <Badge>Earned: {b.remaining.earned}</Badge>
+        </div>
+      ),
+    },
+  ];
+
 
   
   
@@ -256,12 +327,13 @@ export default function LeavesPage() {
       <div className="flex justify-between items-center">
         <div>
           <div className='mb-5'>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'view' | 'mark')}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'view' | 'mark' | 'balance')}>
   <TabsList  className={`grid w-full ${
-    userRole === "employee" ? "grid-cols-1" : "grid-cols-2"
+    userRole === "employee" ? "grid-cols-2" : "grid-cols-3"
   }`}>
     <TabsTrigger value="view" className="w-full">Employee Leave</TabsTrigger>
 {userRole !== 'employee' && <TabsTrigger value="mark" className="w-full">HR Leave</TabsTrigger>}
+    <TabsTrigger value="balance" className="w-full">Balance</TabsTrigger>
   </TabsList>
 </Tabs>
 </div>
@@ -280,15 +352,99 @@ export default function LeavesPage() {
          
       </div>
 
-      <DataTable
-        data={tableData as any}
-        columns={columns}
-        searchPlaceholder="Search by employee name..."
-        onSearch={(query) => setLeaveFilters({ employee: query })}
-        
-        actions={actions}
-        filters={filters}
-      />
+      {activeTab !== 'balance' && (
+        <DataTable
+          data={tableData as any}
+          columns={columns}
+          searchPlaceholder="Search by employee name..."
+          onSearch={(query) => setLeaveFilters({ employee: query })}
+          actions={actions}
+          filters={filters}
+        />
+      )}
+
+      {activeTab === 'balance' && (
+        userRole !== 'employee' ? (
+          isLoadingAllBalances ? (
+            <TableSkeleton />
+          ) : (
+            <DataTable
+              data={balancesArray as any}
+              columns={balanceColumns}
+              searchPlaceholder="Search by employee name or department..."
+              onSearch={() => {}}
+            />
+          )
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Accrual Window</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingMyBalance || !myBalance ? (
+                  <div className="text-sm text-muted-foreground">Loading...</div>
+                ) : (
+                  <div className="text-sm">
+                    {dayjs(myBalance.window.start).format('MMM DD, YYYY')} - {dayjs(myBalance.window.end).format('MMM DD, YYYY')}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Accrual</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingMyBalance || !myBalance ? (
+                  <div className="text-sm text-muted-foreground">Loading...</div>
+                ) : (
+                  <div className="flex gap-3 flex-wrap">
+                    <Badge variant="secondary">Casual: {myBalance.accrual.casual}</Badge>
+                    <Badge variant="secondary">Sick: {myBalance.accrual.sick}</Badge>
+                    <Badge variant="secondary">Earned: {myBalance.accrual.earned}</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Remaining</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingMyBalance || !myBalance ? (
+                  <div className="text-sm text-muted-foreground">Loading...</div>
+                ) : (
+                  <div className="flex gap-3 flex-wrap">
+                    <Badge>Casual: {myBalance.remaining.casual}</Badge>
+                    <Badge>Sick: {myBalance.remaining.sick}</Badge>
+                    <Badge>Earned: {myBalance.remaining.earned}</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-3">
+              <CardHeader>
+                <CardTitle>Usage</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingMyBalance || !myBalance ? (
+                  <div className="text-sm text-muted-foreground">Loading...</div>
+                ) : (
+                  <div className="flex gap-3 flex-wrap">
+                    <Badge variant="outline">Casual used: {myBalance.used.casual}</Badge>
+                    <Badge variant="outline">Sick used: {myBalance.used.sick}</Badge>
+                    <Badge variant="outline">Earned used: {myBalance.used.earned}</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      )}
 
       {/* Leave Details Dialog */}
       <Dialog open={!!selectedLeave} onOpenChange={() => setSelectedLeave(null)}>
