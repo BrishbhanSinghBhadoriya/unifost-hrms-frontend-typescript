@@ -36,10 +36,10 @@ export const authService = {
     return false;
   },
 
-  async login(username: string, password: string, deviceWidth: number): Promise<LoginResponse> {
+  async login(username: string, password: string): Promise<LoginResponse> {
     
     try {
-       deviceWidth = window.innerWidth || document.documentElement.clientWidth;
+      const deviceWidth = window.innerWidth || document.documentElement.clientWidth;
       console.log('Device width:', deviceWidth);
       console.log(' Making API call to:', `${BACKEND_URL}/users/login`);
       
@@ -48,9 +48,6 @@ export const authService = {
         password,
         deviceWidth,
       });
-      console.log('Response:', response);
-      console.log('deviceWidth:', deviceWidth);
-      
       
 
 

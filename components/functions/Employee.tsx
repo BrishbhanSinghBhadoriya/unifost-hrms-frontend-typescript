@@ -37,9 +37,9 @@ export const fetchEmployees = async (params: PaginationParams = {}): Promise<Pag
     if (params.limit) queryParams.append('limit', params.limit.toString());
     if (params.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
-    if (params.search) queryParams.append('search', params.search);
     if (params.department) queryParams.append('department', params.department);
     if (params.status) queryParams.append('status', params.status);
+    if (params.search) queryParams.append('search', params.search);
 
     const response = await api.get(`/hr/getEmployees?${queryParams.toString()}`, {
       headers: {
@@ -54,8 +54,8 @@ export const fetchEmployees = async (params: PaginationParams = {}): Promise<Pag
   };
 
 // Legacy function for backward compatibility
-export const fetchAllEmployees = async (): Promise<Employee[]> => {
-    const response = await fetchEmployees({ limit: 1000 }); // Get all employees
+export const fetchAllEmployees = async (params: PaginationParams = {}): Promise<Employee[]> => {
+    const response = await fetchEmployees({ ...params, page: 1, limit: params.limit ?? 1000 });
     return response.data;
   };
 

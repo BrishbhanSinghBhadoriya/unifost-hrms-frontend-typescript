@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -20,9 +20,9 @@ import {
 } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import {SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 
-import { ChevronDown, ChevronUp, Search, Filter } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 
 interface Column<T> {
   key: keyof T;
@@ -38,6 +38,7 @@ interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
   searchPlaceholder?: string;
+  defaultSearchValue?: string;
   onSearch?: (query: string) => void;
   onRowClick?: (row: T) => void;
   actions?: (row: T) => React.ReactNode;
@@ -47,12 +48,20 @@ interface DataTableProps<T> {
   onSelectionChange?: (rows: T[]) => void;
   defaultSortColumn?: keyof T;
   defaultSortDirection?: 'asc' | 'desc';
+  paginationEnabled?: boolean;
+  manualPagination?: boolean;
+  currentPage?: number;
+  totalRows?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
+  pageSizeOptions?: number[];
 }
 
 export function DataTable<T extends Record<string, any>>({
   data,
   columns,
   searchPlaceholder = 'Search...',
+  defaultSearchValue = '',
   onSearch,
   onRowClick,
   actions,
@@ -61,14 +70,36 @@ export function DataTable<T extends Record<string, any>>({
   selectable = false,
   onSelectionChange,
   defaultSortColumn,
-  defaultSortDirection
+  defaultSortDirection,
+  paginationEnabled = true,
+  manualPagination = false,
+  currentPage,
+  totalRows,
+  onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = [5, 10, 20, 50],
 }: DataTableProps<T>) {
   const [sortColumn, setSortColumn] = useState<keyof T | null>(defaultSortColumn ?? null);
-const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection ?? 'asc');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection ?? 'asc');
+  const [searchQuery, setSearchQuery] = useState(defaultSearchValue ?? '');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setSearchQuery(defaultSearchValue ?? '');
+  }, [defaultSearchValue]);
+
+  useEffect(() => {
+    setPageSize(initialPageSize);
+  }, [initialPageSize]);
+
+  const manualModeActive = Boolean(
+    paginationEnabled &&
+      manualPagination &&
+      typeof onPageChange === 'function' &&
+      typeof currentPage === 'number'
+  );
 
   const handleSort = (column: keyof T) => {
     if (sortColumn === column) {
@@ -82,10 +113,14 @@ const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDi
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     onSearch?.(query);
-    setPage(1);
+    if (manualModeActive) {
+      onPageChange?.(1);
+    } else {
+      setPage(1);
+    }
   };
 
-  const rows = Array.isArray(data) ? data : [] as T[];
+  const rows = Array.isArray(data) ? data : ([] as T[]);
   const filteredRows = searchQuery
     ? rows.filter((row) => {
         const q = searchQuery.toLowerCase();
@@ -120,12 +155,51 @@ const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDi
     return sortDirection === 'asc' ? cmp : -cmp;
   });
 
-  const totalRows = sortedData.length;
-  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const pagedData = sortedData.slice(startIndex, endIndex);
+  const effectivePageSize = pageSize;
+  const effectivePage = manualModeActive ? currentPage ?? 1 : page;
+  const resolvedTotalRows = manualModeActive
+    ? totalRows ?? sortedData.length
+    : sortedData.length;
+
+  let pagedData = sortedData;
+  let totalPages = 1;
+  let startIndex = 0;
+  let endIndex = resolvedTotalRows;
+
+  if (paginationEnabled) {
+    totalPages = Math.max(1, Math.ceil(resolvedTotalRows / effectivePageSize));
+    const currentPageClamped = Math.min(Math.max(1, effectivePage), totalPages);
+    startIndex = (currentPageClamped - 1) * effectivePageSize;
+    endIndex = startIndex + effectivePageSize;
+
+    if (!manualModeActive) {
+      pagedData = sortedData.slice(startIndex, endIndex);
+    } else {
+      // For manual pagination data already represents the current page
+      endIndex = Math.min(startIndex + pagedData.length, resolvedTotalRows);
+    }
+  }
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    if (manualModeActive) {
+      onPageSizeChange?.(newSize);
+      onPageChange?.(1);
+    } else {
+      setPage(1);
+    }
+  };
+
+  const goToPage = (nextPage: number) => {
+    const clamped = Math.max(1, Math.min(nextPage, totalPages));
+    if (manualModeActive) {
+      if (clamped !== effectivePage) {
+        onPageChange?.(clamped);
+      }
+    } else {
+      setPage(clamped);
+    }
+  };
 
   const toggleAll = (checked: boolean) => {
     const next = new Set<number>();
@@ -253,48 +327,50 @@ const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDi
             value={String(pageSize)}
             onValueChange={(v) => {
               const newSize = Number(v);
-              setPageSize(newSize);
-              setPage(1);
+              handlePageSizeChange(newSize);
             }}
           >
             <SelectTrigger className="w-[84px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {[5, 10, 20, 50].map((s) => (
+              {pageSizeOptions.map((s) => (
                 <SelectItem key={s} value={String(s)}>{s}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <span>
-            {totalRows === 0
+            {resolvedTotalRows === 0
               ? '0-0 of 0'
-              : `${startIndex + 1}-${Math.min(endIndex, totalRows)} of ${totalRows}`}
+              : `${startIndex + 1}-${Math.min(startIndex + pagedData.length, resolvedTotalRows)} of ${resolvedTotalRows}`}
           </span>
         </div>
-
+        {paginationEnabled && (
         <Pagination>
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
                 onClick={(e) => {
                   e.preventDefault();
-                  setPage((p) => Math.max(1, p - 1));
+                  goToPage(effectivePage - 1);
                 }}
                 href="#"
+                aria-disabled={effectivePage <= 1}
               />
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
                 onClick={(e) => {
                   e.preventDefault();
-                  setPage((p) => Math.min(totalPages, p + 1));
+                  goToPage(effectivePage + 1);
                 }}
                 href="#"
+                aria-disabled={effectivePage >= totalPages}
               />
             </PaginationItem>
           </PaginationContent>
         </Pagination>
+      )}
       </div>
     </div>
   );

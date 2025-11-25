@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 interface FiltersState {
   employeeFilters: {
+    employee: string;
     search: string;
     department: string;
     status: string;
@@ -24,6 +25,7 @@ interface FiltersState {
 
 export const useFiltersStore = create<FiltersState>((set) => ({
   employeeFilters: {
+    employee: '',
     search: '',
     department: '',
     status: '',
@@ -52,7 +54,7 @@ export const useFiltersStore = create<FiltersState>((set) => ({
     })),
   resetFilters: () =>
     set({
-      employeeFilters: { search: '', department: '', status: '' },
+      employeeFilters: { employee: '', search: '', department: '', status: '' },
       attendanceFilters: { employee: '', month: '', status: '' },
       leaveFilters: { status: '', type: '', employee: '' },
     }),

@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string): Promise<boolean> => {
     console.log('AuthContext: login called with:', { username, password });
     const deviceWidth = window.innerWidth || document.documentElement.clientWidth;
-    const result = await authService.login(username, password, deviceWidth);
+    const result = await authService.login(username, password);
     console.log('AuthContext: authService result:', result);
     
     if (result.success && result.user) {

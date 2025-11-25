@@ -45,18 +45,21 @@ import {useMutation} from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import dayjs from 'dayjs';
 import { formatDateTimeIST } from '@/lib/utils';
+import { useFiltersStore } from '@/store/filters';
 
 
 export default function EmployeesPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const router = useRouter();
-  
+  const { employeeFilters, setEmployeeFilters } = useFiltersStore();
+
   // Pagination state
   const [paginationParams, setPaginationParams] = useState<PaginationParams>({
     page: 1,
     limit: 10,
     sortBy: 'createdAt',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
+    search: employeeFilters.search?.trim() || undefined
   });
   const addEmployeeMutation = useMutation({
     mutationFn: async (employee: Employee) => {
@@ -139,6 +142,16 @@ export default function EmployeesPage() {
       ...prev, 
       status: status === 'all' ? undefined : status, 
       page: 1 
+    }));
+  };
+
+  const handleSearch = (query: string) => {
+    const trimmedQuery = query.trim();
+    setEmployeeFilters({ search: query });
+    setPaginationParams(prev => ({
+      ...prev,
+      search: trimmedQuery || undefined,
+      page: 1
     }));
   };
 
@@ -296,6 +309,11 @@ export default function EmployeesPage() {
     return <TableSkeleton />;
   }
 
+  const paginationInfo = data?.pagination;
+  const currentPage = paginationInfo?.currentPage ?? paginationParams.page ?? 1;
+  const totalEmployees = paginationInfo?.totalEmployees ?? data?.data?.length ?? 0;
+  const pageLimit = paginationInfo?.limit ?? paginationParams.limit ?? 10;
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -331,12 +349,23 @@ export default function EmployeesPage() {
         data={data?.data ?? (Array.isArray(data) ? data : [])}
         columns={columns}
         searchPlaceholder="Search by name or employee code..."
+        defaultSearchValue={employeeFilters.search ?? ''}
         onRowClick={(employee) => router.push(`/employees/${(employee as any)?._id}`)}
+        onSearch={handleSearch}
         actions={actions}
         filters={filters}
+        defaultSortColumn="createdAt"
+        defaultSortDirection="desc"
+        paginationEnabled={true}
+        manualPagination={Boolean(paginationInfo)}
+        currentPage={currentPage}
+        initialPageSize={pageLimit}
+        totalRows={totalEmployees}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handleLimitChange}
       />
 
-      {data?.pagination ? (
+      {/* {data?.pagination ? (
         <PaginationControls
           currentPage={data.pagination.currentPage}
           totalPages={data.pagination.totalPages}
@@ -347,9 +376,9 @@ export default function EmployeesPage() {
           onPageChange={handlePageChange}
           onLimitChange={handleLimitChange}
         />
-      ) : data?.data && data.data.length > 0 ? (
+      ) : data?.data && data.data.length > 0 ? ( */}
         
-        <PaginationControls
+        {/* <PaginationControls
           currentPage={paginationParams.page || 1}
           totalPages={Math.ceil(data.data.length / (paginationParams.limit || 10))}
           totalItems={data.data.length}
@@ -371,7 +400,7 @@ export default function EmployeesPage() {
           onPageChange={handlePageChange}
           onLimitChange={handleLimitChange}
         />
-      ) : null}
+      ) : null} */}
     </div>
   );
 }

@@ -47,15 +47,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { stat } from 'node:fs';
 
 
 export default function AttendancePage() {
   const { user } = useAuth();
-  console.log('AttendancePage: user:', user);
+
   const { attendanceFilters, setAttendanceFilters } = useFiltersStore();
-  const userRole = user?.role;
-  const currentEmployeeId = user?.id;
+  const userRole = user?.role;  
   const isHR = userRole === 'hr' || userRole === 'admin' || userRole === 'manager';
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
@@ -69,21 +67,22 @@ export default function AttendancePage() {
 
 
 
-  const { data: employeesData } = useQuery({
+  const { data: employeesData } = useQuery<Employee[]>({
     queryKey: ['employees'],
-    queryFn: fetchAllEmployees,
+    queryFn: () => fetchAllEmployees(),
   });
+  const employees = employeesData ?? [];
 
 
   const { data: AttendanceData, isLoading } = useQuery({
     queryKey: ['attendance'],
-    queryFn: fetchEmployeesAttenedence
+    queryFn: () => fetchEmployeesAttenedence()
 
   })
   
   const saveMutation = useMutation({
     mutationFn: async (record: Partial<AttendanceRecord>) => {
-      console.log('Save mutation called with:', record);
+      
       const recordId = record.id || (record as any)._id;
       
       if (recordId) {
@@ -104,8 +103,7 @@ export default function AttendancePage() {
           checkOut: record.checkOut?.includes('T') ? record.checkOut : toIsoIST(record.date, record.checkOut),
           hoursWorked: record.hoursWorked
         };
-        console.log('Update API payload:', payload);
-        console.log('Hours worked in update payload:', payload.hoursWorked, 'Type:', typeof payload.hoursWorked);
+       
         const res = await api.put(`/hr/updateAttendance/${recordId}`, payload);
         return res.data;
       } else {
@@ -125,8 +123,7 @@ export default function AttendancePage() {
           hoursWorked: record.hoursWorked,
           status: (record.status || 'present').toString().toLowerCase()
         };
-        console.log('Create API payload:', payload);
-        console.log('Hours worked in create payload:', payload.hoursWorked, 'Type:', typeof payload.hoursWorked);
+       
         const response = await api.post(`/hr/markAttendance/${record.employeeId}`, payload);
 
         return response.data;
@@ -194,20 +191,9 @@ export default function AttendancePage() {
     saveMutation.mutate({ ...record, checkIn: now, status: 'present' });
   };
 
-  const onCheckOut = (record: AttendanceRecord) => {
-    const now = dayjs().format('HH:mm');
-    let hoursWorked = record.hoursWorked;
-    if (record.checkIn) {
-      const start = dayjs(`${record.date} ${record.checkIn}`);
-      const end = dayjs(`${record.date} ${now}`);
-      const diff = end.diff(start, 'minute') / 60;
-      hoursWorked = Math.max(0, Math.round(diff * 10) / 10);
-    }
-    saveMutation.mutate({ ...record, checkOut: now, hoursWorked, status: 'present' });
-  };
-
+  
   const handleEdit = (record: AttendanceRecord) => {
-    // Format the times for the input fields
+ 
     const formatTimeForInput = (time?: string) => {
       if (!time) return '';
       const iso = dayjs.utc(time).tz('Asia/Kolkata');
@@ -238,15 +224,7 @@ export default function AttendancePage() {
     }
   };
 
-  const formatTime = (time?: string) => {
-    if (!time) return '-';
-    const iso = dayjs.utc(time);
-    if (iso.isValid()) return iso.format('hh:mm A');
-    const hm = dayjs(time, 'HH:mm', true);
-    if (hm.isValid()) return hm.format('hh:mm A');
-    return time;
-  };
-
+  
   const formatDate = (date?: string) => {
     if (!date) return '-';
     const d = dayjs(date);
@@ -258,10 +236,10 @@ export default function AttendancePage() {
 
   // Build a map of employeeId -> employee for quick lookup
   const employeeIdToEmployee = new Map<string, Employee>(
-    (employeesData || []).map((e: Employee) => [String(((e as any)._id)), e])
+    employees.map((e: Employee) => [String(((e as any)._id)), e])
   );
   const employeeIdToName = new Map<string, string>(
-    (employeesData || []).map((e: Employee) => [String(((e as any)._id)), e.name])
+    employees.map((e: Employee) => [String(((e as any)._id)), e.name])
   );
 
   const columns = [
@@ -495,7 +473,7 @@ export default function AttendancePage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Employees</SelectItem>
-            {employeesData?.map((emp: Employee) => (
+            {employees.map((emp: Employee) => (
               <SelectItem key={((emp as any)._id)} value={emp.name}>
                 {emp.name}
               </SelectItem>
@@ -551,23 +529,7 @@ export default function AttendancePage() {
               {userRole === 'employee' ? 'Your attendance records' : 'Employee attendance tracking'}
             </p>
           </div>
-          <div className="flex gap-2">
-            {isHR && activeTab === 'mark' && (
-              <Button onClick={() => { 
-                setEditing({ 
-                  date: dayjs().format('YYYY-MM-DD'), 
-                  status: 'present' as any,
-                  employeeId: '',
-                  employeeName: ''
-                }); 
-                setEditOpen(true); 
-              }}>Add</Button>
-            )}
-            <Button onClick={exportToCsv} variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-          </div>
+          
         </div>
 
         
@@ -577,7 +539,7 @@ export default function AttendancePage() {
         data={((AttendanceData ?? []) as AttendanceRecord[])
           .map((rec) => ({
             ...rec,
-            employeeName: rec.employeeName || employeeIdToName.get(String(rec.employeeId)) || rec.employeeName,
+            employeeName: rec.employeeName ,
             status: rec.status,
           }))
           .filter((rec) => {
@@ -608,7 +570,7 @@ export default function AttendancePage() {
             return true;
           })}
         columns={columns}
-        searchPlaceholder="Search by name, status, date..."
+        // searchPlaceholder="Search by name, status, date..."
         onSearch={(query) => setAttendanceFilters({ employee: query })}
         filters={filters}
         defaultSortColumn="date"
@@ -717,7 +679,7 @@ export default function AttendancePage() {
                 <Select 
                   value={editing?.employeeId || ''} 
                   onValueChange={(v) => {
-                    const emp = (employeesData || []).find((e: Employee) => ((e as any)._id) === v);
+                    const emp = employees.find((e: Employee) => ((e as any)._id) === v);
                     setEditing({ ...(editing || {}), employeeId: v, employeeName: emp?.name || '' });
                   }}
                 >
@@ -725,7 +687,7 @@ export default function AttendancePage() {
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    {employeesData?.map((emp: Employee) => (
+                    {employees.map((emp: Employee) => (
                       <SelectItem key={((emp as any)._id)} value={((emp as any)._id)}>
                         {emp.name}
                       </SelectItem>
