@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,7 @@ import { EditModal } from '@/components/ui/edit-modal';
 import { Input } from '@/components/ui/input';
 import api from '@/lib/api';
 import type { AxiosError } from 'axios';
-import { fetchAllEmployees } from '@/components/functions/Employee';
+import { fetchAllEmployees, PaginationParams } from '@/components/functions/Employee';
 import { fetchEmployeesAttenedence } from '@/components/functions/getAttendence';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -67,18 +67,53 @@ export default function AttendancePage() {
 
 
 
+  const [paginationParams, setPaginationParams] = useState<PaginationParams>({
+    page: 1,
+    limit: 10,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    search: attendanceFilters.employee?.trim() || undefined
+  });
+
   const { data: employeesData } = useQuery<Employee[]>({
     queryKey: ['employees'],
     queryFn: () => fetchAllEmployees(),
   });
   const employees = employeesData ?? [];
 
+  const handlePageChange = (page: number) => {
+    setPaginationParams((prev) => ({ ...prev, page }));
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setPaginationParams((prev) => ({ ...prev, limit, page: 1 }));
+  };
+
+  const handleSearch = (search: string) => {
+    const normalized = search.trim();
+    setAttendanceFilters({ employee: search });
+    setPaginationParams((prev) => ({
+      ...prev,
+      search: normalized || undefined,
+      page: 1
+    }));
+  };
 
   const { data: AttendanceData, isLoading } = useQuery({
-    queryKey: ['attendance'],
-    queryFn: () => fetchEmployeesAttenedence()
-
-  })
+    queryKey: ['attendance', paginationParams],
+    queryFn: () => fetchEmployeesAttenedence(paginationParams)
+  });
+  const attendanceRecords = useMemo<AttendanceRecord[]>(() => {
+    if (!AttendanceData) return [];
+    if (Array.isArray(AttendanceData)) return AttendanceData;
+    if (Array.isArray((AttendanceData as any)?.data)) return (AttendanceData as any).data;
+    if (Array.isArray((AttendanceData as any)?.attendance)) return (AttendanceData as any).attendance;
+    return [];
+  }, [AttendanceData]);
+  const attendancePagination = useMemo(() => {
+    if (Array.isArray(AttendanceData)) return undefined;
+    return (AttendanceData as any)?.pagination;
+  }, [AttendanceData]);
   
   const saveMutation = useMutation({
     mutationFn: async (record: Partial<AttendanceRecord>) => {
@@ -160,7 +195,7 @@ export default function AttendancePage() {
   });
 
   const exportToCsv = () => {
-    const csvData = ((AttendanceData ?? []) as AttendanceRecord[]).map((record: AttendanceRecord) => ({
+    const csvData = attendanceRecords.map((record: AttendanceRecord) => ({
       Employee: record.employeeName,
       Date: record.date,
       'Check In': record.checkIn || '',
@@ -515,6 +550,47 @@ export default function AttendancePage() {
     </div>
   );
 
+  const filteredAttendance = useMemo(() => {
+    const records = attendanceRecords.map((rec) => ({
+      ...rec,
+      employeeName: rec.employeeName || employeeIdToName.get(String(rec.employeeId)) || rec.employeeName,
+      status: rec.status,
+    }));
+
+    return records.filter((rec) => {
+      if (rangeStart || rangeEnd) {
+        const d = dayjs(rec.date);
+        if (!d.isValid()) return false;
+        if (rangeStart && d.isBefore(dayjs(rangeStart), 'day')) return false;
+        if (rangeEnd && d.isAfter(dayjs(rangeEnd), 'day')) return false;
+      } else if (dateFilter && rec.date !== dateFilter) {
+        return false;
+      }
+      if (attendanceFilters.month) {
+        const recMonth = dayjs(rec.date).isValid() ? dayjs(rec.date).format('YYYY-MM') : String(rec.date).slice(0, 7);
+        if (recMonth !== attendanceFilters.month) return false;
+      }
+      if (attendanceFilters.status && attendanceFilters.status !== 'all') {
+        const s = String(rec.status || '').toLowerCase();
+        if (s !== attendanceFilters.status.toLowerCase()) return false;
+      }
+      if (attendanceFilters.employee && attendanceFilters.employee !== 'all') {
+        const q = attendanceFilters.employee.toLowerCase();
+        if (!String(rec.employeeName || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [
+    attendanceRecords,
+    attendanceFilters.employee,
+    attendanceFilters.month,
+    attendanceFilters.status,
+    dateFilter,
+    rangeEnd,
+    rangeStart,
+    employeeIdToName,
+  ]);
+
   if (isLoading) {
     return <TableSkeleton />;
   }
@@ -536,45 +612,21 @@ export default function AttendancePage() {
       </div>
 
       <DataTable
-        data={((AttendanceData ?? []) as AttendanceRecord[])
-          .map((rec) => ({
-            ...rec,
-            employeeName: rec.employeeName ,
-            status: rec.status,
-          }))
-          .filter((rec) => {
-            // Date filter: range if provided, else exact if dateFilter
-            if (rangeStart || rangeEnd) {
-              const d = dayjs(rec.date);
-              if (!d.isValid()) return false;
-              if (rangeStart && d.isBefore(dayjs(rangeStart), 'day')) return false;
-              if (rangeEnd && d.isAfter(dayjs(rangeEnd), 'day')) return false;
-            } else if (dateFilter && rec.date !== dateFilter) {
-              return false;
-            }
-            // Month filter: YYYY-MM
-            if (attendanceFilters.month) {
-              const recMonth = dayjs(rec.date).isValid() ? dayjs(rec.date).format('YYYY-MM') : String(rec.date).slice(0, 7);
-              if (recMonth !== attendanceFilters.month) return false;
-            }
-            // Status filter
-            if (attendanceFilters.status && attendanceFilters.status !== 'all') {
-              const s = String(rec.status || '').toLowerCase();
-              if (s !== attendanceFilters.status.toLowerCase()) return false;
-            }
-            // Employee filter by name (from dropdown or search)
-            if (attendanceFilters.employee && attendanceFilters.employee !== 'all') {
-              const q = attendanceFilters.employee.toLowerCase();
-              if (!String(rec.employeeName || '').toLowerCase().includes(q)) return false;
-            }
-            return true;
-          })}
+        data={filteredAttendance}
         columns={columns}
-        // searchPlaceholder="Search by name, status, date..."
-        onSearch={(query) => setAttendanceFilters({ employee: query })}
+        searchPlaceholder="Search by name, status, date..."
+        onSearch={handleSearch}
         filters={filters}
         defaultSortColumn="date"
         defaultSortDirection="desc"
+        manualPagination={Boolean(attendancePagination)}
+        currentPage={attendancePagination?.currentPage ?? paginationParams.page ?? 1}
+        totalRows={attendancePagination?.totalRecords ?? attendanceRecords.length}
+        initialPageSize={paginationParams.limit ?? 10}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handleLimitChange}
+        pageSizeOptions={[5, 10, 20, 50]}
+        paginationEnabled
       />
 
       {isHR && (
