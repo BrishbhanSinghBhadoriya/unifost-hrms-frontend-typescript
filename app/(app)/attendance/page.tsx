@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -47,13 +47,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useDebounce } from '@/hooks/use-debounce';
 
 
 export default function AttendancePage() {
   const { user } = useAuth();
 
   const { attendanceFilters, setAttendanceFilters } = useFiltersStore();
-  const userRole = user?.role;  
+  const userRole = user?.role;
   const isHR = userRole === 'hr' || userRole === 'admin' || userRole === 'manager';
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
@@ -74,6 +75,10 @@ export default function AttendancePage() {
     sortOrder: 'desc',
     search: attendanceFilters.employee?.trim() || undefined
   });
+  const debouncedSearch = useDebounce(attendanceFilters.employee, 500);
+  useEffect(() => {
+    setPaginationParams((prev) => ({ ...prev, search: debouncedSearch?.trim() || undefined }));
+  }, [debouncedSearch]);
 
   const { data: employeesData } = useQuery<Employee[]>({
     queryKey: ['employees'],
@@ -89,14 +94,11 @@ export default function AttendancePage() {
     setPaginationParams((prev) => ({ ...prev, limit, page: 1 }));
   };
 
-  const handleSearch = (search: string) => {
-    const normalized = search.trim();
-    setAttendanceFilters({ employee: search });
-    setPaginationParams((prev) => ({
-      ...prev,
-      search: normalized || undefined,
-      page: 1
-    }));
+  const handleSearch = (query: string) => {
+
+    const trimmedQuery = query.trim();
+    setAttendanceFilters({ employee: trimmedQuery });
+
   };
 
   const { data: AttendanceData, isLoading } = useQuery({
@@ -114,12 +116,12 @@ export default function AttendancePage() {
     if (Array.isArray(AttendanceData)) return undefined;
     return (AttendanceData as any)?.pagination;
   }, [AttendanceData]);
-  
+
   const saveMutation = useMutation({
     mutationFn: async (record: Partial<AttendanceRecord>) => {
-      
+
       const recordId = record.id || (record as any)._id;
-      
+
       if (recordId) {
         const toIsoIST = (date?: string, hhmm?: string) => {
           if (!date || !hhmm) return undefined as unknown as string;
@@ -138,7 +140,7 @@ export default function AttendancePage() {
           checkOut: record.checkOut?.includes('T') ? record.checkOut : toIsoIST(record.date, record.checkOut),
           hoursWorked: record.hoursWorked
         };
-       
+
         const res = await api.put(`/hr/updateAttendance/${recordId}`, payload);
         return res.data;
       } else {
@@ -158,7 +160,7 @@ export default function AttendancePage() {
           hoursWorked: record.hoursWorked,
           status: (record.status || 'present').toString().toLowerCase()
         };
-       
+
         const response = await api.post(`/hr/markAttendance/${record.employeeId}`, payload);
 
         return response.data;
@@ -217,7 +219,7 @@ export default function AttendancePage() {
     link.download = `attendance-${attendanceFilters.month || 'all'}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
-    
+
     toast.success('Attendance data exported successfully');
   };
 
@@ -226,9 +228,9 @@ export default function AttendancePage() {
     saveMutation.mutate({ ...record, checkIn: now, status: 'present' });
   };
 
-  
+
   const handleEdit = (record: AttendanceRecord) => {
- 
+
     const formatTimeForInput = (time?: string) => {
       if (!time) return '';
       const iso = dayjs.utc(time).tz('Asia/Kolkata');
@@ -259,7 +261,7 @@ export default function AttendancePage() {
     }
   };
 
-  
+
   const formatDate = (date?: string) => {
     if (!date) return '-';
     const d = dayjs(date);
@@ -352,9 +354,7 @@ export default function AttendancePage() {
       render: (value: string, record: AttendanceRecord) => {
         const start = dayjs(`${record.date} 10:10`, 'YYYY-MM-DD HH:mm');
         const v = value && (value.includes('T') ? dayjs(value) : dayjs(`${record.date} ${value}`, 'YYYY-MM-DD HH:mm'));
-        console.log(start,v)
         const isLate = !!(v && v.isValid() && v.isAfter(start));
-        console.log(isLate);
         return (
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -437,15 +437,15 @@ export default function AttendancePage() {
       render: (status: string) => (
         <Badge variant={
           status === 'present' ? 'default' :
-          status === 'leave' ? 'secondary' :
-          status === 'absent' ? 'destructive' :
-          status === 'holiday' ? 'outline' : 'secondary'
+            status === 'leave' ? 'secondary' :
+              status === 'absent' ? 'destructive' :
+                status === 'holiday' ? 'outline' : 'secondary'
         }>
           {status === 'present' ? 'Present' :
-           status === 'leave' ? 'On Leave' :
-           status === 'absent' ? 'Absent' :
-           status=== 'late' ? 'Half Day' :null
-           }
+            status === 'leave' ? 'On Leave' :
+              status === 'absent' ? 'Absent' :
+                status === 'late' ? 'Half Day' : null
+          }
         </Badge>
       ),
     },
@@ -591,9 +591,7 @@ export default function AttendancePage() {
     employeeIdToName,
   ]);
 
-  if (isLoading) {
-    return <TableSkeleton />;
-  }
+
 
   return (
     <div className="space-y-6">
@@ -605,10 +603,10 @@ export default function AttendancePage() {
               {userRole === 'employee' ? 'Your attendance records' : 'Employee attendance tracking'}
             </p>
           </div>
-          
+
         </div>
 
-        
+
       </div>
 
       <DataTable
@@ -619,14 +617,16 @@ export default function AttendancePage() {
         filters={filters}
         defaultSortColumn="date"
         defaultSortDirection="desc"
-        manualPagination={Boolean(attendancePagination)}
-        currentPage={attendancePagination?.currentPage ?? paginationParams.page ?? 1}
-        totalRows={attendancePagination?.totalRecords ?? attendanceRecords.length}
-        initialPageSize={paginationParams.limit ?? 10}
-        onPageChange={handlePageChange}
-        onPageSizeChange={handleLimitChange}
-        pageSizeOptions={[5, 10, 20, 50]}
-        paginationEnabled
+        pagination={{
+          manual: Boolean(attendancePagination),
+          page: attendancePagination?.currentPage ?? paginationParams.page ?? 1,
+          total: attendancePagination?.totalRecords ?? attendanceRecords.length,
+          limit: paginationParams.limit ?? 10,
+          onPageChange: handlePageChange,
+          onLimitChange: handleLimitChange,
+          pageSizeOptions: [5, 10, 20, 50]
+        }}
+        isLoading={isLoading}
       />
 
       {isHR && (
@@ -660,7 +660,7 @@ export default function AttendancePage() {
               };
 
               const statusValue = (editing.status || 'present').toString().toLowerCase();
-              const validStatus = ['present', 'absent', 'leave', 'holiday', 'half-day'].includes(statusValue) 
+              const validStatus = ['present', 'absent', 'leave', 'holiday', 'half-day'].includes(statusValue)
                 ? statusValue as 'present' | 'absent' | 'leave' | 'holiday' | 'half-day'
                 : 'present';
 
@@ -708,7 +708,7 @@ export default function AttendancePage() {
                 hoursWorked: calculatedHoursWorked,
                 status: validStatus
               };
-              
+
               console.log('Final payload before API call:', payload);
               saveMutation.mutate(payload);
             }
@@ -720,16 +720,16 @@ export default function AttendancePage() {
               <label className="text-sm font-medium">Employee</label>
               {editing?.id || (editing as any)?._id ? (
                 // For editing existing records, show input box
-                <Input 
-                  type="text" 
-                  value={editing?.employeeName || ''} 
+                <Input
+                  type="text"
+                  value={editing?.employeeName || ''}
                   onChange={(e) => setEditing({ ...(editing || {}), employeeName: e.target.value })}
                   placeholder="Enter employee name"
                 />
               ) : (
                 // For adding new records, show dropdown
-                <Select 
-                  value={editing?.employeeId || ''} 
+                <Select
+                  value={editing?.employeeId || ''}
                   onValueChange={(v) => {
                     const emp = employees.find((e: Employee) => ((e as any)._id) === v);
                     setEditing({ ...(editing || {}), employeeId: v, employeeName: emp?.name || '' });
@@ -821,7 +821,7 @@ export default function AttendancePage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDelete}
               className="bg-red-600 hover:bg-red-700"
             >

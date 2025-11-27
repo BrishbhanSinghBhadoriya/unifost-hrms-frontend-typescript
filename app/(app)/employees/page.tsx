@@ -41,11 +41,13 @@ import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { deleteEmployee, fetchEmployees, PaginationParams } from '@/components/functions/Employee';
 import { PaginationControls } from '@/components/ui/pagination-controls';
-import {useMutation} from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import dayjs from 'dayjs';
 import { formatDateTimeIST } from '@/lib/utils';
 import { useFiltersStore } from '@/store/filters';
+import { useDebounce } from '@/hooks/use-debounce';
+import { useEffect } from 'react';
 
 
 export default function EmployeesPage() {
@@ -61,16 +63,26 @@ export default function EmployeesPage() {
     sortOrder: 'desc',
     search: employeeFilters.search?.trim() || undefined
   });
+
+  const debouncedSearch = useDebounce(employeeFilters.search, 500);
+
+  useEffect(() => {
+    setPaginationParams(prev => ({
+      ...prev,
+      search: debouncedSearch?.trim() || undefined,
+      page: 1
+    }));
+  }, [debouncedSearch]);
   const addEmployeeMutation = useMutation({
     mutationFn: async (employee: Employee) => {
       const response = await api.post('/users/register', employee);
       return response.data;
-      
+
     },
     onSuccess: () => {
       toast.success('Employee added successfully');
       setShowAddDialog(false);
-      refetch(); 
+      refetch();
     },
     onError: (error) => {
       const axiosErr = error as AxiosError<{ message?: string }>;
@@ -89,7 +101,7 @@ export default function EmployeesPage() {
     onSuccess: (res) => {
       if (res?.success) {
         toast.success('Employee deleted successfully');
-        refetch(); 
+        refetch();
       } else {
         toast.error(res?.message || 'Failed to delete employee');
       }
@@ -99,11 +111,11 @@ export default function EmployeesPage() {
     },
   });
 
-  
+
   console.log('Employees data:', data);
   console.log('Pagination params:', paginationParams);
 
-  
+
 
   const handleAddEmployee = async (data: any) => {
     try {
@@ -127,32 +139,26 @@ export default function EmployeesPage() {
     setPaginationParams(prev => ({ ...prev, limit, page: 1 }));
   };
 
-  
+
 
   const handleDepartmentFilter = (department: string) => {
-    setPaginationParams(prev => ({ 
-      ...prev, 
-      department: department === 'all' ? undefined : department, 
-      page: 1 
+    setPaginationParams(prev => ({
+      ...prev,
+      department: department === 'all' ? undefined : department,
+      page: 1
     }));
   };
 
   const handleStatusFilter = (status: string) => {
-    setPaginationParams(prev => ({ 
-      ...prev, 
-      status: status === 'all' ? undefined : status, 
-      page: 1 
+    setPaginationParams(prev => ({
+      ...prev,
+      status: status === 'all' ? undefined : status,
+      page: 1
     }));
   };
 
   const handleSearch = (query: string) => {
-    const trimmedQuery = query.trim();
     setEmployeeFilters({ search: query });
-    setPaginationParams(prev => ({
-      ...prev,
-      search: trimmedQuery || undefined,
-      page: 1
-    }));
   };
 
   const columns = [
@@ -204,8 +210,8 @@ export default function EmployeesPage() {
       label: 'Designation',
       sortable: true,
     },
-    
-    
+
+
 
     {
       key: 'joiningDate' as keyof Employee,
@@ -214,10 +220,10 @@ export default function EmployeesPage() {
       render: (value: string, record: Employee) => {
         // Ensure joiningDate exists
         if (!record?.joiningDate) return "-";
-      
+
         // Parse joiningDate
         const joiningDate = dayjs(record.joiningDate);
-      
+
         // Optional: parse value if needed
         return (
           <div className="flex items-center gap-2">
@@ -300,14 +306,11 @@ export default function EmployeesPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      
-      
+
+
     </div>
   );
 
-  if (isLoading) {
-    return <TableSkeleton />;
-  }
 
   const paginationInfo = data?.pagination;
   const currentPage = paginationInfo?.currentPage ?? paginationParams.page ?? 1;
@@ -356,51 +359,19 @@ export default function EmployeesPage() {
         filters={filters}
         defaultSortColumn="createdAt"
         defaultSortDirection="desc"
-        paginationEnabled={true}
-        manualPagination={Boolean(paginationInfo)}
-        currentPage={currentPage}
-        initialPageSize={pageLimit}
-        totalRows={totalEmployees}
-        onPageChange={handlePageChange}
-        onPageSizeChange={handleLimitChange}
+        pagination={{
+          manual: Boolean(paginationInfo),
+          page: currentPage,
+          limit: pageLimit,
+          total: totalEmployees,
+          onPageChange: handlePageChange,
+          onLimitChange: handleLimitChange,
+          pageSizeOptions: [5, 10, 20, 50]
+        }}
+        isLoading={isLoading}
       />
 
-      {/* {data?.pagination ? (
-        <PaginationControls
-          currentPage={data.pagination.currentPage}
-          totalPages={data.pagination.totalPages}
-          totalItems={data.pagination.totalEmployees}
-          limit={data.pagination.limit}
-          hasNextPage={data.pagination.hasNextPage}
-          hasPrevPage={data.pagination.hasPrevPage}
-          onPageChange={handlePageChange}
-          onLimitChange={handleLimitChange}
-        />
-      ) : data?.data && data.data.length > 0 ? ( */}
-        
-        {/* <PaginationControls
-          currentPage={paginationParams.page || 1}
-          totalPages={Math.ceil(data.data.length / (paginationParams.limit || 10))}
-          totalItems={data.data.length}
-          limit={paginationParams.limit || 10}
-          hasNextPage={false}
-          hasPrevPage={false}
-          onPageChange={handlePageChange}
-          onLimitChange={handleLimitChange}
-        />
-      ) : data && Array.isArray(data) && data.length > 0 ? (
-        // Another fallback for direct array response
-        <PaginationControls
-          currentPage={paginationParams.page || 1}
-          totalPages={Math.ceil(data.length / (paginationParams.limit || 10))}
-          totalItems={data.length}
-          limit={paginationParams.limit || 10}
-          hasNextPage={false}
-          hasPrevPage={false}
-          onPageChange={handlePageChange}
-          onLimitChange={handleLimitChange}
-        />
-      ) : null} */}
+
     </div>
   );
 }

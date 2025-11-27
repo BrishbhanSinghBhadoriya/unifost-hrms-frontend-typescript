@@ -84,6 +84,7 @@ export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
               <SelectItem value="maternity">Maternity Leave</SelectItem>
               <SelectItem value="paternity">Paternity Leave</SelectItem>
               <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+
             </SelectContent>
           </Select>
           {errors.type && (
@@ -104,7 +105,7 @@ export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
             id="startDate"
             type="date"
             {...register('startDate')}
-            min={dayjs().format('YYYY-MM-DD')}
+
           />
           {errors.startDate && (
             <p className="text-sm text-red-600">{errors.startDate.message}</p>
@@ -117,7 +118,7 @@ export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
             id="endDate"
             type="date"
             {...register('endDate')}
-            min={startDate || dayjs().format('YYYY-MM-DD')}
+
           />
           {errors.endDate && (
             <p className="text-sm text-red-600">{errors.endDate.message}</p>

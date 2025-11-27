@@ -29,42 +29,56 @@ export interface PaginationResponse {
 }
 
 export const fetchEmployees = async (params: PaginationParams = {}): Promise<PaginationResponse> => {
-    const token = Cookies.get('token');
-    const queryParams = new URLSearchParams();
-    
-    // Add pagination parameters
-    if (params.page) queryParams.append('page', params.page.toString());
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
-    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
-    if (params.department) queryParams.append('department', params.department);
-    if (params.status) queryParams.append('status', params.status);
-    if (params.search) queryParams.append('search', params.search);
+  const token = Cookies.get('token');
+  const queryParams = new URLSearchParams();
 
-    const response = await api.get(`/hr/getEmployees?${queryParams.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    
-    console.log('Allemployeedata:', response.data);
-    console.log('Query Params:', queryParams.toString());
-    
-    return response.data as PaginationResponse;
-  };
+  // Add pagination parameters
+  if (params.page) queryParams.append('page', params.page.toString());
+  if (params.limit) queryParams.append('limit', params.limit.toString());
+  if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+  if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+  if (params.department) queryParams.append('department', params.department);
+  if (params.status) queryParams.append('status', params.status);
+  if (params.search) queryParams.append('search', params.search);
+
+  const response = await api.get(`/hr/getEmployees?${queryParams.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  console.log('Allemployeedata:', response.data);
+  console.log('Query Params:', queryParams.toString());
+
+  return response.data as PaginationResponse;
+};
 
 // Legacy function for backward compatibility
 export const fetchAllEmployees = async (params: PaginationParams = {}): Promise<Employee[]> => {
-    const response = await fetchEmployees({ ...params, page: 1, limit: params.limit ?? 1000 });
-    return response.data;
-  };
+  const response = await fetchEmployees({ ...params, page: 1, limit: params.limit ?? 1000 });
+  return response.data;
+};
 
-  export const deleteEmployee = async (userId: string): Promise<{ success: boolean; data?: any; message?: string }> => {
-    const token = Cookies.get('token');
-    const response = await api.delete(`/hr/deleteEmployee/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data;
-  };
+export const deleteEmployee = async (userId: string): Promise<{ success: boolean; data?: any; message?: string }> => {
+  const token = Cookies.get('token');
+  const response = await api.delete(`/hr/deleteEmployee/${userId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data;
+};
+export const getEmployeeById = async (id: string): Promise<any | null> => {
+  try {
+    const response = await api.get(`/hr/getEmployee/${id}`);
+    console.log('Employee data:', response.data);
+    const employee = response.data.employee
+    if (employee && (employee._id || employee.id)) {
+      return employee;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching employee:', error);
+    throw error;
+  }
+};

@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LeaveForm } from '@/components/forms/leave-form';
 import { getLeaveBalance, mockEmployees } from '@/lib/mock';
-import { Badge } from '@/components/ui/badge';
+
 import { FileText } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -19,7 +19,7 @@ export default function ApplyLeavePage() {
 
   const handleSubmit = async (data: any) => {
     try {
-      // Backend expects: { leaveType, reason, startDate, endDate, durationType }
+     
       const payload = {
         leaveType: data.type,
         reason: data.reason,

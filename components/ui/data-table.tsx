@@ -18,6 +18,7 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from '@/components/ui/pagination';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SlidersHorizontal } from 'lucide-react';
@@ -34,6 +35,16 @@ interface Column<T> {
   sortType?: 'string' | 'number' | 'date';
 }
 
+export interface PaginationConfig {
+  manual?: boolean;
+  page?: number;
+  limit?: number;
+  total?: number;
+  onPageChange?: (page: number) => void;
+  onLimitChange?: (limit: number) => void;
+  pageSizeOptions?: number[];
+}
+
 interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
@@ -48,13 +59,8 @@ interface DataTableProps<T> {
   onSelectionChange?: (rows: T[]) => void;
   defaultSortColumn?: keyof T;
   defaultSortDirection?: 'asc' | 'desc';
-  paginationEnabled?: boolean;
-  manualPagination?: boolean;
-  currentPage?: number;
-  totalRows?: number;
-  onPageChange?: (page: number) => void;
-  onPageSizeChange?: (size: number) => void;
-  pageSizeOptions?: number[];
+  pagination?: PaginationConfig | boolean;
+  isLoading?: boolean;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -71,13 +77,8 @@ export function DataTable<T extends Record<string, any>>({
   onSelectionChange,
   defaultSortColumn,
   defaultSortDirection,
-  paginationEnabled = true,
-  manualPagination = false,
-  currentPage,
-  totalRows,
-  onPageChange,
-  onPageSizeChange,
-  pageSizeOptions = [5, 10, 20, 50],
+  pagination = true,
+  isLoading = false,
 }: DataTableProps<T>) {
   const [sortColumn, setSortColumn] = useState<keyof T | null>(defaultSortColumn ?? null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(defaultSortDirection ?? 'asc');
@@ -85,6 +86,17 @@ export function DataTable<T extends Record<string, any>>({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  // Extract pagination config
+  const paginationEnabled = Boolean(pagination);
+  const config = typeof pagination === 'object' ? pagination : {};
+
+  const manualPagination = config.manual ?? false;
+  const currentPage = config.page;
+  const totalRows = config.total;
+  const onPageChange = config.onPageChange;
+  const onPageSizeChange = config.onLimitChange;
+  const pageSizeOptions = config.pageSizeOptions ?? [5, 10, 20, 50];
 
   useEffect(() => {
     setSearchQuery(defaultSearchValue ?? '');
@@ -96,9 +108,9 @@ export function DataTable<T extends Record<string, any>>({
 
   const manualModeActive = Boolean(
     paginationEnabled &&
-      manualPagination &&
-      typeof onPageChange === 'function' &&
-      typeof currentPage === 'number'
+    manualPagination &&
+    typeof onPageChange === 'function' &&
+    typeof currentPage === 'number'
   );
 
   const handleSort = (column: keyof T) => {
@@ -123,11 +135,11 @@ export function DataTable<T extends Record<string, any>>({
   const rows = Array.isArray(data) ? data : ([] as T[]);
   const filteredRows = searchQuery
     ? rows.filter((row) => {
-        const q = searchQuery.toLowerCase();
-        return Object.values(row).some((v) =>
-          String(v ?? '').toLowerCase().includes(q)
-        );
-      })
+      const q = searchQuery.toLowerCase();
+      return Object.values(row).some((v) =>
+        String(v ?? '').toLowerCase().includes(q)
+      );
+    })
     : rows;
   const sortedData = [...filteredRows].sort((a, b) => {
     if (!sortColumn) return 0;
@@ -276,7 +288,27 @@ export function DataTable<T extends Record<string, any>>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pagedData.length > 0 ? (
+            {isLoading ? (
+              Array.from({ length: pageSize }).map((_, index) => (
+                <TableRow key={index}>
+                  {selectable && (
+                    <TableCell className="w-8">
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
+                  )}
+                  {columns.map((column, colIndex) => (
+                    <TableCell key={colIndex}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                  {actions && (
+                    <TableCell>
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))
+            ) : pagedData.length > 0 ? (
               pagedData.map((row, index) => (
                 <TableRow
                   key={index}
@@ -346,31 +378,31 @@ export function DataTable<T extends Record<string, any>>({
           </span>
         </div>
         {paginationEnabled && (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={(e) => {
-                  e.preventDefault();
-                  goToPage(effectivePage - 1);
-                }}
-                href="#"
-                aria-disabled={effectivePage <= 1}
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                onClick={(e) => {
-                  e.preventDefault();
-                  goToPage(effectivePage + 1);
-                }}
-                href="#"
-                aria-disabled={effectivePage >= totalPages}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={(e) => {
+                    e.preventDefault();
+                    goToPage(effectivePage - 1);
+                  }}
+                  href="#"
+                  aria-disabled={effectivePage <= 1}
+                />
+              </PaginationItem>
+              <PaginationItem>
+                <PaginationNext
+                  onClick={(e) => {
+                    e.preventDefault();
+                    goToPage(effectivePage + 1);
+                  }}
+                  href="#"
+                  aria-disabled={effectivePage >= totalPages}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
       </div>
     </div>
   );
