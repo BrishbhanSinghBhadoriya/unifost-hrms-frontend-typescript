@@ -298,7 +298,10 @@ export default function AnnouncementPage() {
     
   ];
   const actions = (announcement: AnnouncementFormValues) => (
+    
+    
     <div className="flex items-center gap-2">
+     
       <Button
         size="sm"
         variant="ghost"
@@ -315,6 +318,7 @@ export default function AnnouncementPage() {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+        
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -346,7 +350,7 @@ export default function AnnouncementPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="create" className="w-full">
+      <Tabs defaultValue={user?.role==='employee'?"view":"create"} className="w-full">
         <TabsList>
         {user?.role==='hr' && <TabsTrigger value="create">Create</TabsTrigger>}  
           <TabsTrigger value="view">View</TabsTrigger>
@@ -597,7 +601,8 @@ export default function AnnouncementPage() {
                   data={(announcements as any[]) || []}
                   columns={announcementColumns as any}
                   searchPlaceholder="Search announcements..."
-                  actions={actions}
+                  
+                  actions={ actions}
                 />
               </div>
             </CardContent>

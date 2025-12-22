@@ -96,7 +96,7 @@ export interface User {
   fatherName?: string;
   bloodGroup?: string;
   email: string;
-  phone: number;
+  phone: string;
   address?: {
     street?: string;
     city?: string;
@@ -109,11 +109,11 @@ export interface User {
   profilePicture?: string;
   avatarUrl?: string;
   professionalEmailId?: string;
-  emergencyContactNo?: number;
+  emergencyContactNo: string;
 
   // Employment Information
   employeeId: string;
-  joiningDate?: string | null;
+  joiningDate: string ;
   experience?: {
     company: string;
     designation: string;

@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Employee } from '@/lib/types';
+import { Employee, User } from '@/lib/types';
 import { mockDepartments, mockDesignations, mockEmployees } from '@/lib/mock';
 
 const employeeSchema = z.object({
@@ -29,19 +29,32 @@ const employeeSchema = z.object({
   .regex(/[0-9]/, "Password must contain at least one number")
   .regex(/[@$!%*?&]/, "Password must contain at least one special character (@$!%*?&)"),
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').min(1, 'Email is required'),
   phone: z.string().min(10, 'Phone must be at least 10 characters'),
+  emergencyContactNo:z.string().min(10, 'Alternate Phone must be at least 10 characters').min(10,'Alternate Phone is required'),
+
   department: z.string().min(1, 'Department is required'),
   role: z.string().min(1, 'Role is required'),
   designation: z.string().min(1, 'Designation is required'),
-  joinedOn: z.string().min(1, 'Joining date is required'),
+joinedOn: z.string({
+  required_error: 'Joining date is required'
+}).min(1, 'Joining date is required'),
   dob: z.string().min(1, 'Date of birth is required'),
-});
+}).refine((data) => {
+  if(data.phone==data.emergencyContactNo){
+    return false;
+  }
+  return true;
+ }, {
+  message: "Phone and Alternate Phone cannot be the same",
+  path: ["emergencyContactNo"],
+}); 
+
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
 
 interface EmployeeFormProps {
-  employee?: Employee;
+  employee?: User;
   onSubmit: (data: EmployeeFormData) => void;
   onCancel: () => void;
 }
@@ -62,10 +75,11 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
       name: employee.name,
       email: employee.email,
       phone: employee.phone,
+      emergencyContactNo: employee.emergencyContactNo,
       role: employee.role,
       department: employee.department,
       designation: employee.designation,
-      joinedOn: employee.joinedOn,
+      joinedOn: employee.joiningDate ,
       dob: employee.dob,
       
     } : {
@@ -146,6 +160,18 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
             <p className="text-sm text-red-600">{errors.phone.message}</p>
           )}
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="emergencyContactNo">Emergency Phone Number</Label>
+          <Input
+            id="emergencyContactNo"
+            {...register('emergencyContactNo')}
+            placeholder="+919999999999"
+            className="w-full"
+          />
+          {errors.emergencyContactNo && (
+            <p className="text-sm text-red-600">{errors.emergencyContactNo.message}</p>
+          )}
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="department">Department</Label>
@@ -219,6 +245,7 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
           <Input
             id="joinedOn"
             type="date"
+             max={new Date().toISOString().split("T")[0]}
             {...register('joinedOn')}
             className="w-full"
           />
@@ -232,6 +259,7 @@ export function EmployeeForm({ employee, onSubmit, onCancel }: EmployeeFormProps
           <Input
             id="dob"
             type="date"
+            max={new Date().toISOString().split("T")[0]}
             {...register('dob')}
             className="w-full"
           />

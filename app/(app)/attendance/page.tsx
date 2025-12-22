@@ -801,6 +801,7 @@ export default function AttendancePage() {
                 <SelectContent>
                   <SelectItem value="present">Present</SelectItem>
                   <SelectItem value="absent">Absent</SelectItem>
+                  <SelectItem value="late">Half Day</SelectItem>
                 </SelectContent>
               </Select>
             </div>

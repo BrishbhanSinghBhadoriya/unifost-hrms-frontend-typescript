@@ -361,7 +361,9 @@ export const authService = {
           isEmployee: userData.user.isEmployee,
           isActive: userData.user.isActive,
           employeeId: userData.user.employeeId,
+
           lastLogin: userData.user.lastLogin,
+          joiningDate: userData.user.joiningDate,
           skills: userData.user.skills,
           salary: userData.user.salary,
           address: userData.user.address,
