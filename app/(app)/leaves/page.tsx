@@ -35,17 +35,21 @@ import { useMutation } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAllLeaveBalances, getMyLeaveBalance, UserBalance } from '@/components/functions/getLeaveBalances';
+import { fetchAllEmployees, getEmployees } from '@/components/functions/Employee';
+import { useDebounce } from '@/hooks/use-debounce';
+import { Input } from '@/components/ui/input';
 
 
 
 export default function LeavesPage() {
   const { user } = useAuth();
   const router = useRouter();
-  
+
   const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
   const { leaveFilters, setLeaveFilters } = useFiltersStore();
   const [activeTab, setActiveTab] = useState<'view' | 'mark' | 'balance'>('view');
-
+  const [rangeStart, setRangeStart] = useState<string>('');
+  const [rangeEnd, setRangeEnd] = useState<string>('');
   const userRole = user?.role || 'employee';
 
   const qc = useQueryClient();
@@ -73,8 +77,12 @@ export default function LeavesPage() {
       toast.error('Failed to reject leave request');
     },
   });
-
-  
+  const { data: employee } = useQuery({
+    queryKey: ['employee'],
+    queryFn: () => getEmployees(),
+  });
+  const emp = employee || []
+  console.log("emp", emp);
   const { data: leavesData, isLoading } = useQuery({
     queryKey: ['leaves', userRole],
     queryFn: () => getLeaves(userRole),
@@ -82,7 +90,42 @@ export default function LeavesPage() {
   const result = leavesData || [];
   const employeeLeaves = (result as any[]).filter((l: any) => l?.employeeRole === 'employee');
   const hrLeaves = (result as any[]).filter((l: any) => l?.employeeRole === 'hr');
-  const tableData = (activeTab === 'mark') ? hrLeaves : employeeLeaves;
+
+  let filteredData = (activeTab === 'mark') ? hrLeaves : employeeLeaves;
+  console.log("filteredData", filteredData);
+
+  if (leaveFilters.status && leaveFilters.status !== 'all') {
+    filteredData = filteredData.filter((l: any) => l.status === leaveFilters.status);
+  }
+  if (leaveFilters.type && leaveFilters.type !== 'all') {
+    filteredData = filteredData.filter((l: any) => l.leaveType === leaveFilters.type);
+  }
+  if (leaveFilters.employee && leaveFilters.employee !== 'all') {
+    filteredData = filteredData.filter((l: any) => l.employeeId._id === leaveFilters.employee);
+  }
+
+  if (rangeStart) {
+    filteredData = filteredData.filter((l: any) => dayjs(l.startDate).isAfter(dayjs(rangeStart).subtract(1, 'day')));
+  }
+  if (rangeEnd) {
+    filteredData = filteredData.filter((l: any) => dayjs(l.endDate).isBefore(dayjs(rangeEnd).add(1, 'day')));
+  }
+
+  const debouncedSearch = useDebounce(leaveFilters.search, 500);
+
+  if (leaveFilters.search) {
+    const query = leaveFilters.search.toLowerCase();
+    filteredData = filteredData.filter((l: any) =>
+      l.employeeName.toLowerCase().includes(query) ||
+      l.leaveType.toLowerCase().includes(query)
+    );
+  }
+
+  const handleSearch = (query: string) => {
+    setLeaveFilters({ search: query });
+  };
+
+  const tableData = filteredData;
   console.log('leaves', result);
   // Leave Balances
   const { data: allBalances, isLoading: isLoadingAllBalances } = useQuery<{ balances: UserBalance[] } | UserBalance[] | any>({
@@ -154,8 +197,8 @@ export default function LeavesPage() {
   ];
 
 
-  
-  
+
+
   const handleApproveReject = async (leaveId: string, action: 'approve' | 'reject') => {
     console.log('handleApproveReject', leaveId, action);
     try {
@@ -164,9 +207,9 @@ export default function LeavesPage() {
       } else {
         rejectMutation.mutate(leaveId);
       }
-      
+
       setSelectedLeave(null);
-      
+
     } catch (error) {
       toast.error(`Failed to ${action} leave request`);
     }
@@ -200,7 +243,12 @@ export default function LeavesPage() {
       key: 'appliedOn' as keyof LeaveRequest,
       label: 'Applied On',
       sortable: true,
-      render: (_value:any,leave:LeaveRequest) => dayjs(leave.createdAt).format('MMM DD, YYYY'),
+      render: (_value: any, leave: LeaveRequest) => dayjs(leave.createdAt).format('MMM DD, YYYY'),
+    },
+    {
+      key:'leaveType' as keyof LeaveRequest,
+      label:'Type',
+      render:(_value:any,leave:LeaveRequest)=>leave.leaveType
     },
     {
       key: 'status' as keyof LeaveRequest,
@@ -208,7 +256,7 @@ export default function LeavesPage() {
       render: (status: string) => (
         <Badge variant={
           status === 'approved' ? 'default' :
-          status === 'rejected' ? 'destructive' : 'secondary'
+            status === 'rejected' ? 'destructive' : 'secondary'
         }>
           {status}
         </Badge>
@@ -259,9 +307,9 @@ export default function LeavesPage() {
           <SelectItem value="casual">Casual</SelectItem>
           <SelectItem value="sick">Sick</SelectItem>
           <SelectItem value="earned">Earned</SelectItem>
-          <SelectItem value="maternity">Maternity</SelectItem>
-          <SelectItem value="paternity">Paternity</SelectItem>
-          <SelectItem value="unpaid">Unpaid</SelectItem>
+          <SelectItem value="fop">FOP</SelectItem>
+          <SelectItem value="lop">LOP</SelectItem>
+
         </SelectContent>
       </Select>
 
@@ -275,14 +323,27 @@ export default function LeavesPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Employees</SelectItem>
-            {mockEmployees.map((emp) => (
-              <SelectItem key={emp.id} value={emp.id || ''}>
+            {emp.map((emp) => (
+              <SelectItem key={emp._id} value={emp._id || ''}>
                 {emp.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       )}
+      <div className="flex items-center gap-2">
+        <Input
+          type="date"
+          value={rangeStart}
+          onChange={(e) => setRangeStart(e.target.value)}
+        />
+        <span className="text-sm text-muted-foreground">to</span>
+        <Input
+          type="date"
+          value={rangeEnd}
+          onChange={(e) => setRangeEnd(e.target.value)}
+        />
+      </div>
     </div>
   );
 
@@ -327,16 +388,15 @@ export default function LeavesPage() {
       <div className="flex justify-between items-center">
         <div>
           <div className='mb-5'>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'view' | 'mark' | 'balance')}>
-  <TabsList  className={`grid w-full ${
-    userRole === "employee" ? "grid-cols-2" : "grid-cols-3"
-  }`}>
-    <TabsTrigger value="view" className="w-full">Employee Leave</TabsTrigger>
-{userRole !== 'employee' && <TabsTrigger value="mark" className="w-full">HR Leave</TabsTrigger>}
-    <TabsTrigger value="balance" className="w-full">Balance</TabsTrigger>
-  </TabsList>
-</Tabs>
-</div>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'view' | 'mark' | 'balance')}>
+              <TabsList className={`grid w-full ${userRole === "employee" ? "grid-cols-2" : "grid-cols-3"
+                }`}>
+                <TabsTrigger value="view" className="w-full">Employee Leave</TabsTrigger>
+                {userRole !== 'employee' && <TabsTrigger value="mark" className="w-full">HR Leave</TabsTrigger>}
+                <TabsTrigger value="balance" className="w-full">Balance</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
 
 
           <h1 className="text-3xl font-bold">Leave Requests</h1>
@@ -344,12 +404,12 @@ export default function LeavesPage() {
             {userRole === 'employee' ? 'Your leave requests' : 'Manage employee leave requests'}
           </p>
         </div>
-        
-          <Button onClick={() => router.push('/leaves/apply')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Apply Leave
-          </Button>
-         
+
+        <Button onClick={() => router.push('/leaves/apply')}>
+          <Plus className="mr-2 h-4 w-4" />
+          Apply Leave
+        </Button>
+
       </div>
 
       {activeTab !== 'balance' && (
@@ -357,7 +417,8 @@ export default function LeavesPage() {
           data={tableData as any}
           columns={columns}
           searchPlaceholder="Search by employee name..."
-          onSearch={(query) => setLeaveFilters({ employee: query })}
+          defaultSearchValue={leaveFilters.search ?? ''}
+          onSearch={handleSearch}
           actions={actions}
           filters={filters}
         />
@@ -372,7 +433,7 @@ export default function LeavesPage() {
               data={balancesArray as any}
               columns={balanceColumns}
               searchPlaceholder="Search by employee name or department..."
-              onSearch={() => {}}
+              onSearch={() => { }}
             />
           )
         ) : (
@@ -482,7 +543,7 @@ export default function LeavesPage() {
                   <label className="text-sm font-medium">Status</label>
                   <Badge variant={
                     selectedLeave.status === 'approved' ? 'default' :
-                    selectedLeave.status === 'rejected' ? 'destructive' : 'secondary'
+                      selectedLeave.status === 'rejected' ? 'destructive' : 'secondary'
                   }>
                     {selectedLeave.status}
                   </Badge>
@@ -492,17 +553,17 @@ export default function LeavesPage() {
                 <label className="text-sm font-medium">Reason</label>
                 <p className="mt-1 p-3 bg-muted rounded-md">{selectedLeave.reason}</p>
               </div>
-              
+
               {userRole !== 'employee' && selectedLeave.status === 'pending' && (
                 <div className="flex gap-3 pt-4">
-                  <Button 
+                  <Button
                     onClick={() => handleApproveReject(selectedLeave._id, 'approve')}
                     className="flex-1"
                   >
                     <Check className="mr-2 h-4 w-4" />
                     Approve
                   </Button>
-                  <Button 
+                  <Button
                     variant="destructive"
                     onClick={() => handleApproveReject(selectedLeave._id, 'reject')}
                     className="flex-1"

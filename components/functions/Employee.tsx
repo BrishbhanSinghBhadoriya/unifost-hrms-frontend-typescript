@@ -1,4 +1,4 @@
-import { Employee } from "@/lib/types";
+import { Employee, getEmployeeName } from "@/lib/types";
 import Cookies from "js-cookie";
 import api from "@/lib/api";
 
@@ -27,6 +27,15 @@ export interface PaginationResponse {
   };
   message: string;
 }
+export const getEmployees = async (): Promise<getEmployeeName[]> => {
+  const token = Cookies.get('token');
+  const response = await api.get('/hr/getEmployees', {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  return response.data.employees;
+}
 
 export const fetchEmployees = async (params: PaginationParams = {}): Promise<PaginationResponse> => {
   const token = Cookies.get('token');
@@ -41,7 +50,7 @@ export const fetchEmployees = async (params: PaginationParams = {}): Promise<Pag
   if (params.status) queryParams.append('status', params.status);
   if (params.search) queryParams.append('search', params.search);
 
-  const response = await api.get(`/hr/getEmployees?${queryParams.toString()}`, {
+  const response = await api.get(`/hr/getEmployeesbypagination?${queryParams.toString()}`, {
     headers: {
       Authorization: `Bearer ${token}`
     }

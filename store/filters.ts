@@ -16,6 +16,7 @@ interface FiltersState {
     status: string;
     type: string;
     employee: string;
+    search: string;
   };
   setEmployeeFilters: (filters: Partial<FiltersState['employeeFilters']>) => void;
   setAttendanceFilters: (filters: Partial<FiltersState['attendanceFilters']>) => void;
@@ -39,6 +40,7 @@ export const useFiltersStore = create<FiltersState>((set) => ({
     status: '',
     type: '',
     employee: '',
+    search: '',
   },
   setEmployeeFilters: (filters) =>
     set((state) => ({
@@ -56,6 +58,6 @@ export const useFiltersStore = create<FiltersState>((set) => ({
     set({
       employeeFilters: { employee: '', search: '', department: '', status: '' },
       attendanceFilters: { employee: '', month: '', status: '' },
-      leaveFilters: { status: '', type: '', employee: '' },
+      leaveFilters: { status: '', type: '', employee: '', search: '' },
     }),
 }));

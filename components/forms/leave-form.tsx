@@ -14,11 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAuth } from '@/lib/auth-context';
+
 import dayjs from 'dayjs';
 
 const leaveSchema = z.object({
-  type: z.enum(['casual', 'sick', 'earned', 'maternity', 'paternity', 'unpaid']),
+  type: z.enum(['casual', 'sick', 'earned', 'fop', 'lop']),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
   reason: z.string().min(10, 'Reason must be at least 10 characters'),
@@ -81,9 +81,9 @@ export function LeaveForm({ onSubmit, onCancel }: LeaveFormProps) {
               <SelectItem value="casual">Casual Leave</SelectItem>
               <SelectItem value="sick">Sick Leave</SelectItem>
               <SelectItem value="earned">Earned Leave</SelectItem>
-              <SelectItem value="maternity">Maternity Leave</SelectItem>
-              <SelectItem value="paternity">Paternity Leave</SelectItem>
-              <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+              <SelectItem value="fop">FOP</SelectItem>
+              <SelectItem value="lop">LOP</SelectItem>
+
 
             </SelectContent>
           </Select>

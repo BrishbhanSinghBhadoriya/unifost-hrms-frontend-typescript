@@ -40,11 +40,10 @@ import api from '@/lib/api';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { deleteEmployee, fetchEmployees, PaginationParams } from '@/components/functions/Employee';
-import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import dayjs from 'dayjs';
-import { formatDateTimeIST } from '@/lib/utils';
+
 import { useFiltersStore } from '@/store/filters';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useEffect } from 'react';
@@ -55,7 +54,7 @@ export default function EmployeesPage() {
   const router = useRouter();
   const { employeeFilters, setEmployeeFilters } = useFiltersStore();
 
-  // Pagination state
+
   const [paginationParams, setPaginationParams] = useState<PaginationParams>({
     page: 1,
     limit: 10,

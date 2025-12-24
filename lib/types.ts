@@ -1,22 +1,22 @@
 export interface Employee {
-  username:string,
-  password:string,
+  username: string,
+  password: string,
   _id: string;
   employeeId: string;
- id:string;
+  id: string;
   managerId?: string;
   managerName?: string;
   dateOfBirth?: string;
   reportingTo?: string;
   empCode: string;
   name: string;
-  fatherName:string,
-  bloodGroup:string,
+  fatherName: string,
+  bloodGroup: string,
   email: string;
   phone: string;
   role: string;
   department: string;
-  joiningDate:Date,
+  joiningDate: Date,
   designation: string;
   status: 'active' | 'inactive' | 'terminated';
   joinedOn: string;
@@ -28,7 +28,7 @@ export interface Employee {
     name: string;
     phone: string;
     relationship: string;
-   
+
   };
   isActive: boolean;
   salary?: number;
@@ -60,7 +60,7 @@ export interface LeaveRequest {
   _id: string;
   employeeId: string;
   employeeName: string;
-  leaveType: 'casual' | 'sick' | 'earned' | 'maternity' | 'paternity' | 'unpaid';
+  leaveType: 'casual' | 'sick' | 'earned' | 'fop' | 'lop' ;
   startDate: string;
   endDate: string;
   totalDays: number;
@@ -113,7 +113,7 @@ export interface User {
 
   // Employment Information
   employeeId: string;
-  joiningDate: string ;
+  joiningDate: string;
   experience?: {
     company: string;
     designation: string;
@@ -190,4 +190,8 @@ export interface LeaveBalance {
   casual: { total: number; used: number; remaining: number };
   sick: { total: number; used: number; remaining: number };
   earned: { total: number; used: number; remaining: number };
+}
+export interface getEmployeeName {
+  _id: string;
+  name: string;
 }
