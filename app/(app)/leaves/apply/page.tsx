@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LeaveForm } from '@/components/forms/leave-form';
-import { getLeaveBalance, mockEmployees } from '@/lib/mock';
+import { getLeaveBalance } from '@/lib/mock';
 
 import { FileText } from 'lucide-react';
 import api from '@/lib/api';
@@ -19,7 +19,7 @@ export default function ApplyLeavePage() {
 
   const handleSubmit = async (data: any) => {
     try {
-     
+
       const payload = {
         leaveType: data.type,
         reason: data.reason,
@@ -31,7 +31,7 @@ export default function ApplyLeavePage() {
       toast.success('Leave request submitted successfully');
       router.push('/leaves');
     } catch (error) {
-      toast.error('Failed to submit leave request');
+
     }
   };
 

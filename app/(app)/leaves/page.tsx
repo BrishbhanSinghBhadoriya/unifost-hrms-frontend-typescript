@@ -62,7 +62,7 @@ export default function LeavesPage() {
       qc.invalidateQueries({ queryKey: ['leaves', userRole] });
     },
     onError: (error) => {
-      toast.error('Failed to approve leave request');
+    // toast.error('Failed to approve leave request');
     },
   });
   const rejectMutation = useMutation({
