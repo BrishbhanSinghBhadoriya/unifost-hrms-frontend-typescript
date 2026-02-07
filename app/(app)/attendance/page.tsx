@@ -22,6 +22,9 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { formatDateTimeIST as sharedFormatDateTimeIST } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import * as XLSX from 'xlsx';
+// @ts-ignore - file-saver doesn't have types
+import { saveAs } from 'file-saver';
 
 
 dayjs.extend(utc);
@@ -35,7 +38,7 @@ import { fetchAllEmployees, PaginationParams } from '@/components/functions/Empl
 import { fetchEmployeesAttenedence } from '@/components/functions/getAttendence';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
@@ -65,6 +68,11 @@ export default function AttendancePage() {
   const [rangeStart, setRangeStart] = useState<string>('');
   const [rangeEnd, setRangeEnd] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'view' | 'mark'>('view');
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportType, setExportType] = useState<'month' | 'custom'>('month');
+  const [exportMonth, setExportMonth] = useState<string>(dayjs().format('YYYY-MM'));
+  const [exportStartDate, setExportStartDate] = useState<string>('');
+  const [exportEndDate, setExportEndDate] = useState<string>('');
 
 
 
@@ -196,31 +204,119 @@ export default function AttendancePage() {
     },
   });
 
-  const exportToCsv = () => {
-    const csvData = attendanceRecords.map((record: AttendanceRecord) => ({
-      Employee: record.employeeName,
-      Date: record.date,
-      'Check In': record.checkIn || '',
-      'Check Out': record.checkOut || '',
-      'Hours Worked': record.hoursWorked || '',
-      Status: record.status,
-    }));
+  const exportToXlsx = () => {
+    let dataToExport = attendanceRecords;
 
-    const headers = Object.keys(csvData[0] || {});
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map((row: any) => headers.map((header) => (row as any)[header]).join(','))
-    ].join('\n');
+    // Filter based on export type
+    if (exportType === 'month' && exportMonth) {
+      dataToExport = attendanceRecords.filter((rec) => {
+        const recMonth = dayjs(rec.date).isValid() 
+          ? dayjs(rec.date).format('YYYY-MM') 
+          : String(rec.date).slice(0, 7);
+        return recMonth === exportMonth;
+      });
+    } else if (exportType === 'custom' && exportStartDate && exportEndDate) {
+      dataToExport = attendanceRecords.filter((rec) => {
+        const recDate = dayjs(rec.date);
+        if (!recDate.isValid()) return false;
+        const start = dayjs(exportStartDate);
+        const end = dayjs(exportEndDate);
+        return (recDate.isAfter(start, 'day') || recDate.isSame(start, 'day')) && 
+               (recDate.isBefore(end, 'day') || recDate.isSame(end, 'day'));
+      });
+    }
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `attendance-${attendanceFilters.month || 'all'}.csv`;
-    link.click();
-    window.URL.revokeObjectURL(url);
+    if (dataToExport.length === 0) {
+      toast.error('No data available for the selected period');
+      return;
+    }
 
-    toast.success('Attendance data exported successfully');
+    // Format data for Excel
+    const excelData = dataToExport.map((record: AttendanceRecord) => {
+      // Format check-in time - only time (HH:mm), no date
+      const formatTimeOnly = (time?: string, date?: string) => {
+        if (!time) return '';
+        if (time.includes('T')) {
+          // ISO format - extract time only
+          const d = dayjs.utc(time).tz('Asia/Kolkata');
+          return d.isValid() ? d.format('HH:mm') : '';
+        }
+        // Already in HH:mm format
+        if (time.match(/^\d{2}:\d{2}$/)) {
+          return time;
+        }
+        // Try to parse with date
+        if (date) {
+          const d = dayjs.utc(`${date} ${time}`, 'YYYY-MM-DD HH:mm');
+          return d.isValid() ? d.format('HH:mm') : time;
+        }
+        return time;
+      };
+      
+      const checkInTime = formatTimeOnly(record.checkIn, record.date);
+      const checkOutTime = record.checkOut 
+        ? formatDateTimeIST(record.date, record.checkOut) 
+        : '';
+      
+      // Calculate hours worked
+      let hoursWorked = '';
+      if (record.checkIn && record.checkOut) {
+        const parseTime = (date: string, t?: string) => {
+          if (!t) return null;
+          if (t.includes('T')) {
+            const d = dayjs.utc(t);
+            return d.isValid() ? d : null;
+          }
+          const d = dayjs.utc(`${date} ${t}`, 'YYYY-MM-DD HH:mm');
+          return d.isValid() ? d : null;
+        };
+        const start = parseTime(record.date, record.checkIn);
+        const end = parseTime(record.date, record.checkOut);
+        if (start && end) {
+          const diffMin = Math.max(0, end.diff(start, 'minute'));
+          const hours = Math.floor(diffMin / 60);
+          const minutes = diffMin % 60;
+          hoursWorked = `${hours}h ${minutes}m`;
+        }
+      }
+
+      return {
+        'Employee ID': typeof record.employeeId === 'string' 
+          ? record.employeeId 
+          : String((record.employeeId as any)?._id || record.employeeId || ''),
+        'Employee Name': record.employeeName || '',
+        'Date': dayjs(record.date).isValid() 
+          ? dayjs(record.date).format('DD-MM-YYYY') 
+          : record.date,
+        'Check In': checkInTime,
+        'Check Out': checkOutTime,
+        'Hours Worked': hoursWorked || record.hoursWorked || '',
+        'Status': record.status || '',
+      };
+    });
+
+    // Create workbook and worksheet
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
+
+    // Generate filename
+    let filename = 'attendance';
+    if (exportType === 'month' && exportMonth) {
+      filename = `attendance-${dayjs(exportMonth).format('MMMM-YYYY')}`;
+    } else if (exportType === 'custom' && exportStartDate && exportEndDate) {
+      filename = `attendance-${dayjs(exportStartDate).format('DD-MM-YYYY')}-to-${dayjs(exportEndDate).format('DD-MM-YYYY')}`;
+    }
+
+    // Export file
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+    saveAs(blob, `${filename}.xlsx`);
+
+    toast.success(`Attendance data exported successfully (${dataToExport.length} records)`);
+    setExportDialogOpen(false);
   };
 
   const onCheckIn = (record: AttendanceRecord) => {
@@ -603,7 +699,83 @@ export default function AttendancePage() {
               {userRole === 'employee' ? 'Your attendance records' : 'Employee attendance tracking'}
             </p>
           </div>
+          <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Export to Excel
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Export Attendance Data</DialogTitle>
+                <DialogDescription>
+                  Choose how you want to export the attendance data
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Export Type</label>
+                  <Select value={exportType} onValueChange={(value) => setExportType(value as 'month' | 'custom')}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="month">Month Wise</SelectItem>
+                      <SelectItem value="custom">Custom Date Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
+                {exportType === 'month' && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Month</label>
+                    <Input
+                      type="month"
+                      value={exportMonth}
+                      onChange={(e) => setExportMonth(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {exportType === 'custom' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Start Date</label>
+                      <Input
+                        type="date"
+                        value={exportStartDate}
+                        onChange={(e) => setExportStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">End Date</label>
+                      <Input
+                        type="date"
+                        value={exportEndDate}
+                        onChange={(e) => setExportEndDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={exportToXlsx}
+                  disabled={
+                    (exportType === 'month' && !exportMonth) ||
+                    (exportType === 'custom' && (!exportStartDate || !exportEndDate))
+                  }
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
 
